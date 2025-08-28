@@ -409,10 +409,14 @@ HRESULT DensoRobotControl::CheckRobotType()
       robot_name_.c_str(), type_name.c_str(),
       (robot_name_.length() < type_name.length()) ? robot_name_.length() : type_name.length()))
   {
-    RCLCPP_FATAL(
-      rclcpp::get_logger(node_->get_name()), "Expected robot type is %s , real robot type is %s",
-      robot_name_.c_str(), type_name.c_str());
-    return E_FAIL;
+   if (!(type_name.find("VS050") != std::string::npos ||
+          type_name.find("VS060") != std::string::npos)) {
+        RCLCPP_FATAL(
+          rclcpp::get_logger(node_->get_name()),
+          "Expected robot type is %s , real robot type is %s",
+          robot_name_.c_str(), type_name.c_str());
+        return E_FAIL;
+    }
   }
 
   return 0;
