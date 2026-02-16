@@ -67,7 +67,7 @@
       </link>
     </model>
     <model name='cylinder'>
-      <pose>2.97104 -0.719706 0.499999 0 -0 -0</pose>
+      <pose>2.1992 0.282365 0.499999 -0 -0 -0</pose>
       <link name='cylinder_link'>
         <inertial>
           <inertia>
@@ -84,8 +84,8 @@
         <collision name='cylinder_collision'>
           <geometry>
             <cylinder>
-              <radius>0.5</radius>
-              <length>1</length>
+              <radius>0.2</radius>
+              <length>0.3</length>
             </cylinder>
           </geometry>
           <surface>
@@ -99,8 +99,8 @@
         <visual name='cylinder_visual'>
           <geometry>
             <cylinder>
-              <radius>0.5</radius>
-              <length>1</length>
+              <radius>0.2</radius>
+              <length>0.3</length>
             </cylinder>
           </geometry>
           <material>

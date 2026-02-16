@@ -13,7 +13,7 @@ scale:
   joint: 0.01
 
 # Optionally override Servo's internal velocity scaling when near singularity or collision (0.0 = use internal velocity scaling)
-# override_velocity_scaling_factor = 0.0 # valid range [0.0:1.0]
+override_velocity_scaling_factor: 0.2 # valid range [0.0:1.0]
 
 ## Properties of outgoing commands
 publish_period: 0.01  # 1/Nominal publish rate [seconds]
@@ -46,7 +46,7 @@ ee_frame_name: J6  # The name of the end effector link, used to return the EE po
 robot_link_command_frame:  J6  # commands must be given in the frame of a robot link. Usually either the base or end effector
 
 ## Stopping behaviour
-incoming_command_timeout:  0.1  # Stop servoing if X seconds elapse without a new command
+incoming_command_timeout:  0.2  # Stop servoing if X seconds elapse without a new command
 # If 0, republish commands forever even if the robot is stationary. Otherwise, specify num. to publish.
 # Important because ROS may drop some messages and we need the robot to halt reliably.
 num_outgoing_halt_msgs_to_publish: 4
