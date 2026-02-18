@@ -67,7 +67,7 @@
       </link>
     </model>
     <model name='cylinder'>
-      <pose>2.1992 0.282365 0.499999 -0 -0 -0</pose>
+      <pose>1.02367 -0.072764 0.149999 0 -0 0</pose>
       <link name='cylinder_link'>
         <inertial>
           <inertia>
