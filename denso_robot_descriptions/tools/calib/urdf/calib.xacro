@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="calib" params="namespace end_effector xyz rpy">
+    <link name="${namespace}calib_link">
+		<inertial>
+			<mass value="0.1"/>
+			<inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+		</inertial>
+		<collision>
+			<geometry>
+				<mesh filename="file:///$(find denso_robot_descriptions)/tools/calib/meshes/apex_v3_1.stl" scale="0.001 0.001 0.001"/>
+			</geometry>
+		</collision>
+		<visual>
+			<geometry>
+				<mesh filename="file:///$(find denso_robot_descriptions)/tools/calib/meshes/apex_v3_1.stl" scale="0.001 0.001 0.001"/>
+			</geometry>
+		</visual>
+	</link>
+
+	<joint name="${namespace}calib_joint" type="fixed">
+		<parent link="${namespace}${end_effector}"/>
+		<child link="${namespace}calib_link"/>
+		<origin rpy="${rpy}" xyz="${xyz}"/>
+	</joint>
+    </xacro:macro>
+</robot>

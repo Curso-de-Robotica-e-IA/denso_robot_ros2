@@ -20,6 +20,9 @@
     transmission_hw_interface:=hardware_interface/PositionJointInterface
     sim:=false
     basic_camera:=false
+    calib_tool:=false
+    calib_xyz:='0 0 0.01'
+    calib_rpy:='0 0 0'
     ip_address
     send_format
     recv_format
@@ -60,6 +63,10 @@
     <xacro:if value="$(arg basic_camera)">
       <xacro:include filename="$(find denso_robot_descriptions)/tools/basic_camera/urdf/basic_camera.xacro" />
     </xacro:if>
+
+    <xacro:if value="$(arg calib_tool)">
+      <xacro:include filename="$(find denso_robot_descriptions)/tools/calib/urdf/calib.xacro" />
+    </xacro:if>
     
     <!-- ros2 control instance -->
     <xacro:denso_robot_ros2_control
@@ -93,6 +100,14 @@
 
     <xacro:if value="$(arg basic_camera)">
       <xacro:basic_camera namespace="${namespace}" end_effector="J6" />
+    </xacro:if>
+
+    <xacro:if value="$(arg calib_tool)">
+      <xacro:calib
+        namespace="${namespace}"
+        end_effector="J6"
+        xyz="$(arg calib_xyz)"
+        rpy="$(arg calib_rpy)" />
     </xacro:if>
   </xacro:macro>
 </robot>

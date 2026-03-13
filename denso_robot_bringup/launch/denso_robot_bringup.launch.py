@@ -164,6 +164,21 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
+            'calib_tool', default_value='false',
+            description='Add calib tool in J6'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'calib_xyz', default_value='0 0 0.01',
+            description='XYZ position of calib tool relative to J6'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'calib_rpy', default_value='0 0 0',
+            description='RPY orientation of calib tool relative to J6'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
             'xyz', default_value='0 0 0',
             description='XYZ position of arm'
         ))
@@ -187,6 +202,9 @@ def generate_launch_description():
     rviz = LaunchConfiguration('rviz')
     sim = LaunchConfiguration('sim')
     basic_camera = LaunchConfiguration('basic_camera')
+    calib_tool = LaunchConfiguration('calib_tool')
+    calib_xyz = LaunchConfiguration('calib_xyz')
+    calib_rpy = LaunchConfiguration('calib_rpy')
     verbose = LaunchConfiguration('verbose')
     controllers_file = LaunchConfiguration('controllers_file')
     robot_controller = LaunchConfiguration('robot_controller')
@@ -213,6 +231,9 @@ def generate_launch_description():
             'verbose:=', verbose, ' ',
             'sim:=', sim, ' ',
             'basic_camera:=', basic_camera, ' ',
+            'calib_tool:=', calib_tool, ' ',
+            'calib_xyz:="', calib_xyz, '" ',
+            'calib_rpy:="', calib_rpy, '" ',
             'xyz:="', xyz, '" ',
             'rpy:="', rpy, '" '
         ])
@@ -227,7 +248,8 @@ def generate_launch_description():
                 [FindPackageShare(moveit_config_package), 'srdf', moveit_config_file]),
             ' ',
             'model:=', denso_robot_model, ' ',
-            'namespace:=', namespace, ' '
+            'namespace:=', namespace, ' ',
+            'calib_tool:=', calib_tool, ' '
         ])
     robot_description_semantic = {'robot_description_semantic': robot_description_semantic_content}
     kinematics_yaml = load_yaml('denso_robot_moveit_config', 'config/kinematics.yaml')

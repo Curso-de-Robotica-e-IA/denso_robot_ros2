@@ -4,7 +4,7 @@
     This is a format for representing semantic information about the robot structure.
     A URDF file must exist for this robot as well, where the joints and the links that are referenced are defined
 -->
-  <xacro:macro name="denso_robot_srdf" params="namespace">
+	<xacro:macro name="denso_robot_srdf" params="namespace calib_tool:=false">
     <!--GROUPS - Representation of a set of joints and links. This can be useful for specifying DOF to plan for, defining arms, end effectors, etc-->
     <!--LINKS - When a link is specified, the parent joint of that link (if it exists) is automatically included-->
     <!--JOINTS - When a joint is specified, the child link of that joint (which will always exist) is automatically included-->
@@ -34,6 +34,11 @@
 	<disable_collisions link1="${namespace}J3" link2="${namespace}J4" reason="Adjacent"/>
 	<disable_collisions link1="${namespace}J3" link2="${namespace}J5" reason="Never"/>
 	<disable_collisions link1="${namespace}J4" link2="${namespace}J5" reason="Adjacent"/>
+
+    <xacro:if value="${calib_tool}">
+	  <disable_collisions link1="${namespace}J6" link2="${namespace}calib_link" reason="Adjacent"/>
+	  <disable_collisions link1="${namespace}J5" link2="${namespace}calib_link" reason="Never"/>
+    </xacro:if>
 
   </xacro:macro>
 </robot>
