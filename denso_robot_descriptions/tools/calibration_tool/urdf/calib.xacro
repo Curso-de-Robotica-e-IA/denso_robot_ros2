@@ -15,6 +15,9 @@
 			</geometry>
 		</collision>
 		<visual>
+			<material name="calib_material">
+				<color rgba="0.8 0.1 0.1 1"/>
+			</material>
 			<origin rpy="${mesh_rpy}" xyz="${mesh_xyz}"/>
 			<geometry>
 				<mesh filename="file:///$(find denso_robot_descriptions)/tools/calibration_tool/meshes/calibration_tool.dae" scale="1 1 1"/>
