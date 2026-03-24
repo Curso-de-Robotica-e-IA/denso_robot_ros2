@@ -179,6 +179,16 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
+            'calib_mesh_xyz', default_value='0.01 0.004 0.946',
+            description='XYZ offset of calib tool mesh to compensate for Fusion export'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'calib_mesh_rpy', default_value='0 0 0',
+            description='RPY offset of calib tool mesh to compensate for Fusion export'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
             'xyz', default_value='0 0 0',
             description='XYZ position of arm'
         ))
@@ -200,11 +210,14 @@ def generate_launch_description():
     moveit_config_file = LaunchConfiguration('moveit_config_file')
     namespace = LaunchConfiguration('namespace')
     rviz = LaunchConfiguration('rviz')
+    use_servo = LaunchConfiguration('use_servo')
     sim = LaunchConfiguration('sim')
     basic_camera = LaunchConfiguration('basic_camera')
     calib_tool = LaunchConfiguration('calib_tool')
     calib_xyz = LaunchConfiguration('calib_xyz')
     calib_rpy = LaunchConfiguration('calib_rpy')
+    calib_mesh_xyz = LaunchConfiguration('calib_mesh_xyz')
+    calib_mesh_rpy = LaunchConfiguration('calib_mesh_rpy')
     verbose = LaunchConfiguration('verbose')
     controllers_file = LaunchConfiguration('controllers_file')
     robot_controller = LaunchConfiguration('robot_controller')
@@ -234,6 +247,8 @@ def generate_launch_description():
             'calib_tool:=', calib_tool, ' ',
             'calib_xyz:="', calib_xyz, '" ',
             'calib_rpy:="', calib_rpy, '" ',
+            'calib_mesh_xyz:="', calib_mesh_xyz, '" ',
+            'calib_mesh_rpy:="', calib_mesh_rpy, '" ',
             'xyz:="', xyz, '" ',
             'rpy:="', rpy, '" '
         ])
@@ -249,7 +264,9 @@ def generate_launch_description():
             ' ',
             'model:=', denso_robot_model, ' ',
             'namespace:=', namespace, ' ',
-            'calib_tool:=', calib_tool, ' '
+            'calib_tool:=', calib_tool, ' ',
+            'calib_mesh_xyz:="', calib_mesh_xyz, '" ',
+            'calib_mesh_rpy:="', calib_mesh_rpy, '" '
         ])
     robot_description_semantic = {'robot_description_semantic': robot_description_semantic_content}
     kinematics_yaml = load_yaml('denso_robot_moveit_config', 'config/kinematics.yaml')
@@ -449,6 +466,8 @@ def generate_launch_description():
     servo_node = Node(
         package='moveit_servo',
         executable='servo_node_main',
+        condition=IfCondition(use_servo),
+
         parameters=[
             servo_params,
             robot_description,

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-    <xacro:macro name="calib" params="namespace end_effector xyz rpy">
+    <xacro:macro name="calib" params="namespace end_effector xyz rpy mesh_xyz:='0.01 0.004 0.946' mesh_rpy:='0 0 0'">
     <link name="${namespace}calib_link">
 		<inertial>
 			<origin rpy="${rpy}" xyz="${xyz}"/>
@@ -9,13 +9,13 @@
 			<inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
 		</inertial>
 		<collision>
-			<origin rpy="${rpy}" xyz="${xyz}"/>
+			<origin rpy="${mesh_rpy}" xyz="${mesh_xyz}"/>
 			<geometry>
 				<mesh filename="file:///$(find denso_robot_descriptions)/tools/calib/meshes/apex_v3_1.stl" scale="0.001 0.001 0.001"/>
 			</geometry>
 		</collision>
 		<visual>
-			<origin rpy="${rpy}" xyz="${xyz}"/>
+			<origin rpy="${mesh_rpy}" xyz="${mesh_xyz}"/>
 			<geometry>
 				<mesh filename="file:///$(find denso_robot_descriptions)/tools/calib/meshes/apex_v3_1.stl" scale="0.001 0.001 0.001"/>
 			</geometry>

@@ -16,6 +16,8 @@
   <xacro:arg name="calib_tool" default="false" />
   <xacro:arg name="calib_xyz" default="0 0 0.01" />
   <xacro:arg name="calib_rpy" default="0 0 0" />
+  <xacro:arg name="calib_mesh_xyz" default="0.01 0.004 0.946" />
+  <xacro:arg name="calib_mesh_rpy" default="0 0 0" />
    <xacro:arg name="ip_address" default="192.168.0.1" />
    <xacro:arg name="send_format" default="288" />
    <xacro:arg name="recv_format" default="292" />
@@ -38,6 +40,8 @@
     calib_tool="$(arg calib_tool)"
     calib_xyz="$(arg calib_xyz)"
     calib_rpy="$(arg calib_rpy)"
+    calib_mesh_xyz="$(arg calib_mesh_xyz)"
+    calib_mesh_rpy="$(arg calib_mesh_rpy)"
      ip_address="$(arg ip_address)"
      verbose="$(arg verbose)"
      send_format="$(arg send_format)"

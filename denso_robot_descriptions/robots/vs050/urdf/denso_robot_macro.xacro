@@ -23,6 +23,8 @@
     calib_tool:=false
     calib_xyz:='0 0 0.01'
     calib_rpy:='0 0 0'
+    calib_mesh_xyz:='0.01 0.004 0.946'
+    calib_mesh_rpy:='0 0 0'
     ip_address
     send_format
     recv_format
@@ -107,7 +109,9 @@
         namespace="${namespace}"
         end_effector="J6"
         xyz="$(arg calib_xyz)"
-        rpy="$(arg calib_rpy)" />
+        rpy="$(arg calib_rpy)"
+        mesh_xyz="$(arg calib_mesh_xyz)"
+        mesh_rpy="$(arg calib_mesh_rpy)" />
     </xacro:if>
   </xacro:macro>
 </robot>
