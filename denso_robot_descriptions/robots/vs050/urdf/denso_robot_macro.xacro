@@ -23,7 +23,7 @@
     calib_tool:=false
     calib_xyz:='0 0 0.01'
     calib_rpy:='0 0 0'
-    calib_mesh_xyz:='0.01 0.004 0.946'
+    calib_mesh_xyz:='0 0 0'
     calib_mesh_rpy:='0 0 0'
     ip_address
     send_format
@@ -67,7 +67,7 @@
     </xacro:if>
 
     <xacro:if value="$(arg calib_tool)">
-      <xacro:include filename="$(find denso_robot_descriptions)/tools/calib/urdf/calib.xacro" />
+      <xacro:include filename="$(find denso_robot_descriptions)/tools/calibration_tool/urdf/calib.xacro" />
     </xacro:if>
     
     <!-- ros2 control instance -->

@@ -16,7 +16,7 @@
   <xacro:arg name="calib_tool" default="false" />
   <xacro:arg name="calib_xyz" default="0 0 0.01" />
   <xacro:arg name="calib_rpy" default="0 0 0" />
-  <xacro:arg name="calib_mesh_xyz" default="0.01 0.004 0.946" />
+  <xacro:arg name="calib_mesh_xyz" default="0 0 0" />
   <xacro:arg name="calib_mesh_rpy" default="0 0 0" />
    <xacro:arg name="ip_address" default="192.168.0.1" />
    <xacro:arg name="send_format" default="288" />

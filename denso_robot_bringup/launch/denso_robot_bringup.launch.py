@@ -179,7 +179,7 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'calib_mesh_xyz', default_value='0.01 0.004 0.946',
+            'calib_mesh_xyz', default_value='0 0 0',
             description='XYZ offset of calib tool mesh to compensate for Fusion export'
         ))
     declared_arguments.append(
