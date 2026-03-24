@@ -11,13 +11,13 @@
 		<collision>
 			<origin rpy="${mesh_rpy}" xyz="${mesh_xyz}"/>
 			<geometry>
-				<mesh filename="file:///$(find denso_robot_descriptions)/tools/calibration_tool/meshes/calibration_tool.dae" scale="0.001 0.001 0.001"/>
+				<mesh filename="file:///$(find denso_robot_descriptions)/tools/calibration_tool/meshes/calibration_tool.dae" scale="1 1 1"/>
 			</geometry>
 		</collision>
 		<visual>
 			<origin rpy="${mesh_rpy}" xyz="${mesh_xyz}"/>
 			<geometry>
-				<mesh filename="file:///$(find denso_robot_descriptions)/tools/calibration_tool/meshes/calibration_tool.dae" scale="0.001 0.001 0.001"/>
+				<mesh filename="file:///$(find denso_robot_descriptions)/tools/calibration_tool/meshes/calibration_tool.dae" scale="1 1 1"/>
 			</geometry>
 		</visual>
 	</link>
