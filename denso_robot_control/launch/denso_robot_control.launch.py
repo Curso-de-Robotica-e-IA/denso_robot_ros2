@@ -148,7 +148,7 @@ def generate_launch_description():
             description='Add calib tool in J6'))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'calib_xyz', default_value='0 0 0.0475',
+            'calib_xyz', default_value='0 0 0.01',
             description='XYZ position of calib tool relative to J6'))
     declared_arguments.append(
         DeclareLaunchArgument(
