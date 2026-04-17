@@ -144,6 +144,26 @@ def generate_launch_description():
             description='Start robot with fake hardware mirroring command to its states.'))
     declared_arguments.append(
         DeclareLaunchArgument(
+            'calib_tool', default_value='false',
+            description='Add calib tool in J6'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'calib_xyz', default_value='0 0 0.01',
+            description='XYZ position of calib tool relative to J6'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'calib_rpy', default_value='0 0 0',
+            description='RPY orientation of calib tool relative to J6'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'calib_mesh_xyz', default_value='0 0 0',
+            description='XYZ offset of calib tool mesh to compensate for Fusion export'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'calib_mesh_rpy', default_value='0 0 0',
+            description='RPY offset of calib tool mesh to compensate for Fusion export'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
             'verbose', default_value='false',
             description='Print out additional debug information.'))
 
@@ -160,6 +180,11 @@ def generate_launch_description():
     namespace = LaunchConfiguration('namespace')
 #    launch_rviz = LaunchConfiguration('launch_rviz')
     sim = LaunchConfiguration('sim')
+    calib_tool = LaunchConfiguration('calib_tool')
+    calib_xyz = LaunchConfiguration('calib_xyz')
+    calib_rpy = LaunchConfiguration('calib_rpy')
+    calib_mesh_xyz = LaunchConfiguration('calib_mesh_xyz')
+    calib_mesh_rpy = LaunchConfiguration('calib_mesh_rpy')
     verbose = LaunchConfiguration('verbose')
     controllers_file = LaunchConfiguration('controllers_file')
     robot_controller = LaunchConfiguration('robot_controller')
@@ -183,7 +208,12 @@ def generate_launch_description():
             'recv_format:=', recv_format, ' ',
             'namespace:=', namespace, ' ',
             'verbose:=',  verbose, ' ',
-            'sim:=', sim, ' '
+            'sim:=', sim, ' ',
+            'calib_tool:=', calib_tool, ' ',
+            'calib_xyz:="', calib_xyz, '" ',
+            'calib_rpy:="', calib_rpy, '" ',
+            'calib_mesh_xyz:="', calib_mesh_xyz, '" ',
+            'calib_mesh_rpy:="', calib_mesh_rpy, '" '
         ])
     robot_description = {'robot_description': robot_description_content}
 

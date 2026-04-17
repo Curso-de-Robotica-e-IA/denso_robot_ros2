@@ -1,0 +1,27 @@
+{
+  "transform_json": "calib_tool_tf-robot1_to_robot2.json",
+  "num_points": 1,
+  "points": [
+    {
+      "label": "cli_point",
+      "source_file": "cli",
+      "position_robot1": {
+        "x": 0.38505,
+        "y": 0.10082,
+        "z": 0.00868
+      },
+      "position_robot2": {
+        "x": 0.4591747881556307,
+        "y": -0.1034541543561811,
+        "z": 0.008606787161849592
+      }
+    }
+  ],
+  "moveit_position_targets_xyz": [
+    [
+      0.4591747881556307,
+      -0.1034541543561811,
+      0.008606787161849592
+    ]
+  ]
+}

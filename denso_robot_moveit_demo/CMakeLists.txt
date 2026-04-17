@@ -37,6 +37,14 @@ ament_target_dependencies(
   denso_robot_moveit_pickandplace_scara
   moveit_ros_planning_interface)
 
+# Send XYZ targets from JSON via MoveIt (position-only targets)
+add_executable(
+  send_moveit_xyz_targets_from_json
+  src/send_moveit_xyz_targets_from_json.cpp)
+ament_target_dependencies(
+  send_moveit_xyz_targets_from_json
+  moveit_ros_planning_interface)
+
 #=============
 # Install
 #=============
@@ -65,10 +73,19 @@ install(
   RUNTIME DESTINATION lib/${PROJECT_NAME}
   INCLUDES DESTINATION include)
 
+install(
+  TARGETS send_moveit_xyz_targets_from_json
+  EXPORT export_send_moveit_xyz_targets_from_json
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  INCLUDES DESTINATION include)
+
 ament_export_targets(
   export_${PROJECT_NAME}
   export_denso_robot_moveit_pickandplace
-  export_denso_robot_moveit_pickandplace_scara)
+  export_denso_robot_moveit_pickandplace_scara
+  export_send_moveit_xyz_targets_from_json)
 
 install(
   DIRECTORY launch

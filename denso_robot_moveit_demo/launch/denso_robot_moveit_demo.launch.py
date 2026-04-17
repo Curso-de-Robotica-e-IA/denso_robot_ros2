@@ -40,6 +40,26 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'sim', default_value='true',
             description='Start robot with fake hardware mirroring command to its states.'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'calib_tool', default_value='false',
+            description='Add calib tool in J6'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'calib_xyz', default_value='0 0 0.01',
+            description='XYZ position of calib tool relative to J6'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'calib_rpy', default_value='0 0 0',
+            description='RPY orientation of calib tool relative to J6'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'calib_mesh_xyz', default_value='0 0 0',
+            description='XYZ offset of calib tool mesh to compensate for Fusion export'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'calib_mesh_rpy', default_value='0 0 0',
+            description='RPY offset of calib tool mesh to compensate for Fusion export'))
 # Configuration arguments
     declared_arguments.append(
         DeclareLaunchArgument(
@@ -66,6 +86,11 @@ def generate_launch_description():
 
     denso_robot_model = LaunchConfiguration('model')
     sim = LaunchConfiguration('sim')
+    calib_tool = LaunchConfiguration('calib_tool')
+    calib_xyz = LaunchConfiguration('calib_xyz')
+    calib_rpy = LaunchConfiguration('calib_rpy')
+    calib_mesh_xyz = LaunchConfiguration('calib_mesh_xyz')
+    calib_mesh_rpy = LaunchConfiguration('calib_mesh_rpy')
     description_package = LaunchConfiguration('description_package')
     description_file = LaunchConfiguration('description_file')
     moveit_config_package = LaunchConfiguration('moveit_config_package')
@@ -85,6 +110,11 @@ def generate_launch_description():
             ' ',
             'model:=', denso_robot_model, ' ',
             'sim:=', sim, ' ',
+            'calib_tool:=', calib_tool, ' ',
+            'calib_xyz:="', calib_xyz, '" ',
+            'calib_rpy:="', calib_rpy, '" ',
+            'calib_mesh_xyz:="', calib_mesh_xyz, '" ',
+            'calib_mesh_rpy:="', calib_mesh_rpy, '" ',
             "namespace:=''"
         ])
 
@@ -97,6 +127,9 @@ def generate_launch_description():
                 [FindPackageShare(moveit_config_package), 'srdf', moveit_config_file]),
             ' ',
             'model:=', denso_robot_model, ' ',
+            'calib_tool:=', calib_tool, ' ',
+            'calib_mesh_xyz:="', calib_mesh_xyz, '" ',
+            'calib_mesh_rpy:="', calib_mesh_rpy, '" ',
             "namespace:=''"
         ])
     robot_description_semantic = {'robot_description_semantic': robot_description_semantic_content}

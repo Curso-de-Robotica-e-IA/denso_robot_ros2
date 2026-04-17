@@ -5,9 +5,10 @@
   <xacro:arg name="model" default="denso_robot"/>
   <!-- parameters -->
   <xacro:arg name="namespace" default="" />
+  <xacro:arg name="calib_tool" default="false" />
 
   <xacro:include filename="$(find denso_robot_moveit_config)/robots/$(arg model)/srdf/denso_robot_macro.srdf.xacro"/>
 
-  <xacro:denso_robot_srdf namespace="$(arg namespace)"/>
+  <xacro:denso_robot_srdf namespace="$(arg namespace)" calib_tool="$(arg calib_tool)"/>
 
 </robot>
