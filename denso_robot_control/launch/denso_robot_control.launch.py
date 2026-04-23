@@ -148,7 +148,7 @@ def generate_launch_description():
             description='Add calib tool in J6'))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'calib_xyz', default_value='0 0 0.01',
+            'calib_xyz', default_value='0 0 0.05',
             description='XYZ position of calib tool relative to J6'))
     declared_arguments.append(
         DeclareLaunchArgument(
@@ -156,7 +156,7 @@ def generate_launch_description():
             description='RPY orientation of calib tool relative to J6'))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'calib_mesh_xyz', default_value='0 0 0',
+            'calib_mesh_xyz', default_value='0 0 -0.05',
             description='XYZ offset of calib tool mesh to compensate for Fusion export'))
     declared_arguments.append(
         DeclareLaunchArgument(
