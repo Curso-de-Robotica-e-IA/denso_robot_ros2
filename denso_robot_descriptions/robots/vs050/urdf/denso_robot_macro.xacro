@@ -21,9 +21,9 @@
     sim:=false
     basic_camera:=false
     calib_tool:=false
-    calib_xyz:='0 0 0.01'
+    calib_xyz:='0 0 0.05'
     calib_rpy:='0 0 0'
-    calib_mesh_xyz:='0 0 0'
+    calib_mesh_xyz:='0 0 -0.05'
     calib_mesh_rpy:='0 0 0'
     ip_address
     send_format
