@@ -45,6 +45,22 @@ ament_target_dependencies(
   send_moveit_xyz_targets_from_json
   moveit_ros_planning_interface)
 
+# Send points from JSON via MoveIt (robot1/robot2 point pairs)
+add_executable(
+  send_moveit_points_from_json
+  src/send_moveit_points_from_json.cpp)
+ament_target_dependencies(
+  send_moveit_points_from_json
+  moveit_ros_planning_interface)
+
+# Send pose with plane equality constraints and orientation constraints (OMPL and without)
+add_executable(
+  send_moveit_pose_with_constraints
+  src/send_moveit_pose_with_constraints.cpp)
+ament_target_dependencies(
+  send_moveit_pose_with_constraints
+  moveit_ros_planning_interface)
+
 #=============
 # Install
 #=============
@@ -81,11 +97,29 @@ install(
   RUNTIME DESTINATION lib/${PROJECT_NAME}
   INCLUDES DESTINATION include)
 
+install(
+  TARGETS send_moveit_points_from_json
+  EXPORT export_send_moveit_points_from_json
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  INCLUDES DESTINATION include)
+
+install(
+  TARGETS send_moveit_pose_with_constraints
+  EXPORT export_send_moveit_pose_with_constraints
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  INCLUDES DESTINATION include)
+
 ament_export_targets(
   export_${PROJECT_NAME}
   export_denso_robot_moveit_pickandplace
   export_denso_robot_moveit_pickandplace_scara
-  export_send_moveit_xyz_targets_from_json)
+  export_send_moveit_xyz_targets_from_json
+  export_send_moveit_points_from_json
+  export_send_moveit_pose_with_constraints)
 
 install(
   DIRECTORY launch
