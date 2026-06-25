@@ -16,6 +16,7 @@
    <xacro:arg name="right_ip_address" default="192.168.0.2" />
    <xacro:arg name="send_format" default="288" />
    <xacro:arg name="recv_format" default="292" />
+   <xacro:arg name="calib_tool" default="false" />
 
    <xacro:arg name="left_xyz" default="-0.417 0 0" />
    <xacro:arg name="left_rpy" default="0 0 0" />
@@ -37,7 +38,8 @@
      ip_address="$(arg left_ip_address)"
      verbose="$(arg verbose)"
      send_format="$(arg send_format)"
-     recv_format="$(arg recv_format)" >
+     recv_format="$(arg recv_format)"
+     calib_tool="$(arg calib_tool)" >
      <origin xyz="$(arg left_xyz)" rpy="$(arg left_rpy)" />
    </xacro:denso_robot>
 
@@ -52,7 +54,8 @@
      ip_address="$(arg right_ip_address)"
      verbose="$(arg verbose)"
      send_format="$(arg send_format)"
-     recv_format="$(arg recv_format)" >
+     recv_format="$(arg recv_format)"
+     calib_tool="$(arg calib_tool)" >
      <origin xyz="$(arg right_xyz)" rpy="$(arg right_rpy)" />
    </xacro:denso_robot>
 

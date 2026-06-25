@@ -154,6 +154,13 @@ def build_input_points_from_json(input_json: Path, include_rotation: bool) -> li
             dtype=float,
         )
 
+    def get_position_obj(item: dict[str, Any], label: str) -> dict[str, Any]:
+        if "position" in item:
+            return item["position"]
+        if "position_robot1" in item:
+            return item["position_robot1"]
+        raise ValueError(f"{label} is missing 'position' or 'position_robot1'")
+
     def parse_rotation(item: dict[str, Any]) -> np.ndarray | None:
         if not include_rotation:
             return None
@@ -166,12 +173,13 @@ def build_input_points_from_json(input_json: Path, include_rotation: bool) -> li
 
     points: list[dict[str, Any]] = []
 
-    if isinstance(data, dict) and "position" in data:
+    if isinstance(data, dict) and ("position" in data or "position_robot1" in data):
+        position_obj = get_position_obj(data, "root")
         points.append(
             {
                 "label": "point_0",
                 "source_file": str(input_json),
-                "position_r1": parse_pos(data["position"]),
+                "position_r1": parse_pos(position_obj),
                 "rotation_r1": parse_rotation(data),
             }
         )
@@ -179,13 +187,12 @@ def build_input_points_from_json(input_json: Path, include_rotation: bool) -> li
 
     if isinstance(data, dict) and "points" in data and isinstance(data["points"], list):
         for idx, item in enumerate(data["points"]):
-            if "position" not in item:
-                raise ValueError(f"points[{idx}] is missing 'position'")
+            position_obj = get_position_obj(item, f"points[{idx}]")
             points.append(
                 {
                     "label": item.get("label", f"point_{idx}"),
                     "source_file": str(input_json),
-                    "position_r1": parse_pos(item["position"]),
+                    "position_r1": parse_pos(position_obj),
                     "rotation_r1": parse_rotation(item),
                 }
             )
@@ -193,13 +200,14 @@ def build_input_points_from_json(input_json: Path, include_rotation: bool) -> li
 
     if isinstance(data, list):
         for idx, item in enumerate(data):
-            if not isinstance(item, dict) or "position" not in item:
-                raise ValueError("List input must contain objects with a 'position' field")
+            if not isinstance(item, dict):
+                raise ValueError("List input must contain objects with a 'position' or 'position_robot1' field")
+            position_obj = get_position_obj(item, f"list[{idx}]")
             points.append(
                 {
                     "label": item.get("label", f"point_{idx}"),
                     "source_file": str(input_json),
-                    "position_r1": parse_pos(item["position"]),
+                    "position_r1": parse_pos(position_obj),
                     "rotation_r1": parse_rotation(item),
                 }
             )
@@ -207,7 +215,9 @@ def build_input_points_from_json(input_json: Path, include_rotation: bool) -> li
 
     raise ValueError(
         "Unsupported input JSON format. Use either: "
-        "{'position': {...}}, {'points': [{'position': {...}}, ...]}, or a list of point objects."
+        "{'position': {...}}, {'position_robot1': {...}}, "
+        "{'points': [{'position': {...}} ...]} or {'points': [{'position_robot1': {...}} ...]}, "
+        "or a list of point objects."
     )
 
 
@@ -304,8 +314,6 @@ def main() -> None:
         input_points = build_input_points_from_cli(cli_xyz[0], cli_xyz[1], cli_xyz[2])
 
     output_points = []
-    moveit_position_targets = []
-    moveit_orientation_targets = []
 
     for item in input_points:
         p_r1 = item["position_r1"]
@@ -313,7 +321,8 @@ def main() -> None:
 
         output_item = {
             "label": item["label"],
-            "position_robot2": point_to_dict(p_r2),
+            "position_robot1": point_to_dict(p_r1),
+            "position_robot2_transformed": point_to_dict(p_r2),
         }
 
         if args.include_rotation:
@@ -324,29 +333,16 @@ def main() -> None:
 
             r_r2 = transform_rotation(matrix, item["rotation_r1"])
             quaternion_r2 = rotation_matrix_to_quaternion(r_r2)
-            output_item["orientation_robot2_quaternion"] = quaternion_r2
-            moveit_orientation_targets.append(
-                [
-                    quaternion_r2["x"],
-                    quaternion_r2["y"],
-                    quaternion_r2["z"],
-                    quaternion_r2["w"],
-                ]
-            )
+            output_item["orientation_robot2_transformed_quaternion"] = quaternion_r2
 
         output_points.append(output_item)
-        moveit_position_targets.append([float(p_r2[0]), float(p_r2[1]), float(p_r2[2])])
 
     output_data = {
         "transform_json": str(args.transform_json),
         "num_points": len(output_points),
         "include_rotation": args.include_rotation,
         "points": output_points,
-        "moveit_position_targets_xyz": moveit_position_targets,
     }
-
-    if args.include_rotation:
-        output_data["moveit_orientation_targets_xyzw"] = moveit_orientation_targets
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as outfile:
@@ -354,13 +350,8 @@ def main() -> None:
 
     print(f"Saved transformed points to {args.output}")
     print(f"Transformed points: {len(output_points)}")
-    print("MoveIt position targets (x,y,z) [m]:")
-    for target in moveit_position_targets:
-        print(f"  {target}")
     if args.include_rotation:
-        print("MoveIt orientation targets (x,y,z,w):")
-        for target in moveit_orientation_targets:
-            print(f"  {target}")
+        print("Orientation data included in output points.")
 
 
 if __name__ == "__main__":
