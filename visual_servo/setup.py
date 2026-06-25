@@ -24,7 +24,9 @@ setup(
     },
     entry_points={
     'console_scripts': [
-        'visual_servo_exe = visual_servo.visual_servo_node:main'
+        'visual_servo_exe = visual_servo.visual_servo_node:main',
+        'visual_servo_2_exe = visual_servo.visual_servo_2_node:main',
+        'get_image_exe = visual_servo.get_image_node:main'
     ],
     },
 )

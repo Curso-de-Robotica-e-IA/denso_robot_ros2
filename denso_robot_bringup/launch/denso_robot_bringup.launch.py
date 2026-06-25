@@ -395,7 +395,7 @@ def generate_launch_description():
     world = PathJoinSubstitution([
         FindPackageShare(LaunchConfiguration('description_package')),
         'worlds',
-        'empty_with_camera_support.sdf'
+        'bag_with_camera_support.sdf'
     ])
     
     gazebo = IncludeLaunchDescription(
