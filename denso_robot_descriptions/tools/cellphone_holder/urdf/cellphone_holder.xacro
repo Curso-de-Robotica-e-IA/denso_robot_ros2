@@ -6,11 +6,10 @@
       <visual>
         <origin rpy="0 0 0" xyz="0 0 ${tag_thickness / 2.0}"/>
         <geometry>
-          <box size="${tag_size} ${tag_size} ${tag_thickness}"/>
+          <mesh
+            filename="file://$(find denso_robot_descriptions)/tools/cellphone_holder/meshes/tag36h10_id${id}.obj"
+            scale="${tag_size} ${tag_size} 1"/>
         </geometry>
-        <material name="${namespace}cellphone_holder_tag_${id}_material">
-          <texture filename="file://$(find denso_robot_descriptions)/tools/cellphone_holder/materials/textures/tag36h10_id${id}.png"/>
-        </material>
       </visual>
     </link>
 
