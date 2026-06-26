@@ -1,0 +1,97 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="cellphone_holder_tag" params="namespace id x y tag_size tag_thickness">
+    <link name="${namespace}cellphone_holder_tag_${id}">
+      <visual>
+        <origin rpy="0 0 0" xyz="0 0 ${tag_thickness / 2.0}"/>
+        <geometry>
+          <box size="${tag_size} ${tag_size} ${tag_thickness}"/>
+        </geometry>
+        <material name="${namespace}cellphone_holder_tag_${id}_material">
+          <texture filename="file://$(find denso_robot_descriptions)/tools/cellphone_holder/materials/textures/tag36h10_id${id}.png"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="${namespace}cellphone_holder_tag_${id}_joint" type="fixed">
+      <parent link="${namespace}cellphone_holder_tags_frame"/>
+      <child link="${namespace}cellphone_holder_tag_${id}"/>
+      <origin rpy="0 0 0" xyz="${x} ${y} 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="cellphone_holder" params="
+    namespace
+    end_effector
+    xyz:='-0.021230953 0 0.05367'
+    rpy:='0 0 1.57079632679'
+    mesh_xyz:='0 0 0.036991104'
+    mesh_rpy:='0 0 1.57079632679'
+    mesh_scale:='0.001 0.001 0.001'
+    tag_size:=0.031
+    tag_thickness:=0.001">
+
+    <xacro:property name="top_tag_spacing" value="0.0952"/>
+    <xacro:property name="bottom_tag_spacing" value="0.0998"/>
+    <xacro:property name="side_tag_spacing" value="0.2075"/>
+    <xacro:property name="side_tag_y_spacing" value="0.2074872534"/>
+
+    <link name="${namespace}cellphone_holder_mount_frame">
+      <visual>
+        <origin rpy="${mesh_rpy}" xyz="${mesh_xyz}"/>
+        <geometry>
+          <mesh
+            filename="file://$(find denso_robot_descriptions)/tools/cellphone_holder/meshes/cellphone_holder.stl"
+            scale="${mesh_scale}"/>
+        </geometry>
+        <material name="${namespace}cellphone_holder_body_material">
+          <color rgba="0.75 0.75 0.70 1.0"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="${namespace}cellphone_holder_mount_joint" type="fixed">
+      <parent link="${namespace}${end_effector}"/>
+      <child link="${namespace}cellphone_holder_mount_frame"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+
+    <link name="${namespace}cellphone_holder_tags_frame"/>
+
+    <joint name="${namespace}cellphone_holder_joint" type="fixed">
+      <parent link="${namespace}cellphone_holder_mount_frame"/>
+      <child link="${namespace}cellphone_holder_tags_frame"/>
+      <origin rpy="${rpy}" xyz="${xyz}"/>
+    </joint>
+
+    <xacro:cellphone_holder_tag
+      namespace="${namespace}"
+      id="1"
+      x="${-top_tag_spacing / 2.0}"
+      y="${side_tag_y_spacing / 2.0}"
+      tag_size="${tag_size}"
+      tag_thickness="${tag_thickness}" />
+    <xacro:cellphone_holder_tag
+      namespace="${namespace}"
+      id="2"
+      x="${top_tag_spacing / 2.0}"
+      y="${side_tag_y_spacing / 2.0}"
+      tag_size="${tag_size}"
+      tag_thickness="${tag_thickness}" />
+    <xacro:cellphone_holder_tag
+      namespace="${namespace}"
+      id="3"
+      x="${-bottom_tag_spacing / 2.0}"
+      y="${-side_tag_y_spacing / 2.0}"
+      tag_size="${tag_size}"
+      tag_thickness="${tag_thickness}" />
+    <xacro:cellphone_holder_tag
+      namespace="${namespace}"
+      id="4"
+      x="${bottom_tag_spacing / 2.0}"
+      y="${-side_tag_y_spacing / 2.0}"
+      tag_size="${tag_size}"
+      tag_thickness="${tag_thickness}" />
+  </xacro:macro>
+</robot>

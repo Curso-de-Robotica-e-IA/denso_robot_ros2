@@ -155,6 +155,13 @@ def generate_launch_description():
             description='Start robot with fake hardware mirroring command to its states.'))
     declared_arguments.append(
         DeclareLaunchArgument(
+            'gazebo_args', default_value='-r -v 4',
+            description='Arguments passed to Gazebo Sim before the world file.'))
+    declared_arguments.append(
+        DeclareLaunchArgument('use_servo', default_value='false', description='Launch MoveIt Servo?')
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
             'verbose', default_value='false',
             description='Print out additional debug information.'))
     declared_arguments.append(
@@ -189,6 +196,41 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
+            'cellphone_holder', default_value='false',
+            description='Add cellphone holder AprilTag markers in J6'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'cellphone_holder_xyz', default_value='-0.021230953 0 0.05367',
+            description='XYZ position of cellphone holder tag plane relative to J6'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'cellphone_holder_rpy', default_value='0 0 1.57079632679',
+            description='RPY orientation of cellphone holder tag plane relative to J6'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'cellphone_holder_mesh_xyz', default_value='0 0 0.036991104',
+            description='XYZ offset of cellphone holder STL relative to the tag plane frame'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'cellphone_holder_mesh_rpy', default_value='0 0 1.57079632679',
+            description='RPY offset of cellphone holder STL relative to the tag plane frame'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'cellphone_holder_mesh_scale', default_value='0.001 0.001 0.001',
+            description='Scale of cellphone holder STL mesh'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'cellphone_holder_tag_size', default_value='0.031',
+            description='Visual side length of each cellphone holder AprilTag marker'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
             'xyz', default_value='0 0 0',
             description='XYZ position of arm'
         ))
@@ -212,12 +254,20 @@ def generate_launch_description():
     rviz = LaunchConfiguration('rviz')
     use_servo = LaunchConfiguration('use_servo')
     sim = LaunchConfiguration('sim')
+    gazebo_args = LaunchConfiguration('gazebo_args')
     basic_camera = LaunchConfiguration('basic_camera')
     calib_tool = LaunchConfiguration('calib_tool')
     calib_xyz = LaunchConfiguration('calib_xyz')
     calib_rpy = LaunchConfiguration('calib_rpy')
     calib_mesh_xyz = LaunchConfiguration('calib_mesh_xyz')
     calib_mesh_rpy = LaunchConfiguration('calib_mesh_rpy')
+    cellphone_holder = LaunchConfiguration('cellphone_holder')
+    cellphone_holder_xyz = LaunchConfiguration('cellphone_holder_xyz')
+    cellphone_holder_rpy = LaunchConfiguration('cellphone_holder_rpy')
+    cellphone_holder_mesh_xyz = LaunchConfiguration('cellphone_holder_mesh_xyz')
+    cellphone_holder_mesh_rpy = LaunchConfiguration('cellphone_holder_mesh_rpy')
+    cellphone_holder_mesh_scale = LaunchConfiguration('cellphone_holder_mesh_scale')
+    cellphone_holder_tag_size = LaunchConfiguration('cellphone_holder_tag_size')
     verbose = LaunchConfiguration('verbose')
     controllers_file = LaunchConfiguration('controllers_file')
     robot_controller = LaunchConfiguration('robot_controller')
@@ -249,6 +299,13 @@ def generate_launch_description():
             'calib_rpy:="', calib_rpy, '" ',
             'calib_mesh_xyz:="', calib_mesh_xyz, '" ',
             'calib_mesh_rpy:="', calib_mesh_rpy, '" ',
+            'cellphone_holder:=', cellphone_holder, ' ',
+            'cellphone_holder_xyz:="', cellphone_holder_xyz, '" ',
+            'cellphone_holder_rpy:="', cellphone_holder_rpy, '" ',
+            'cellphone_holder_mesh_xyz:="', cellphone_holder_mesh_xyz, '" ',
+            'cellphone_holder_mesh_rpy:="', cellphone_holder_mesh_rpy, '" ',
+            'cellphone_holder_mesh_scale:="', cellphone_holder_mesh_scale, '" ',
+            'cellphone_holder_tag_size:=', cellphone_holder_tag_size, ' ',
             'xyz:="', xyz, '" ',
             'rpy:="', rpy, '" '
         ])
@@ -382,11 +439,13 @@ def generate_launch_description():
     joint_state_broadcaster_spawner = Node(
         package='controller_manager',
         executable='spawner',
+        condition=UnlessCondition(sim),
         arguments=['denso_joint_state_broadcaster', '--controller-manager', '/controller_manager'])
 
     robot_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
+        condition=UnlessCondition(sim),
         arguments=[robot_controller, '-c', '/controller_manager'])
 
 # --------- rviz with moveit configuration ---------
@@ -404,7 +463,8 @@ def generate_launch_description():
             robot_description,
             robot_description_semantic,
             ompl_planning_pipeline_config,
-            robot_description_kinematics
+            robot_description_kinematics,
+            {'use_sim_time': sim}
         ])
 
     # Static TF
@@ -435,7 +495,7 @@ def generate_launch_description():
                 'gz_sim.launch.py'
             ])
         ),
-        launch_arguments={'gz_args': ['-r', '-v4', ' ', world]}.items(), #'-r' == run simulation on start (without this flag gazebo not connect with ros2_controllers)
+        launch_arguments={'gz_args': [gazebo_args, ' ', world]}.items(), #'-r' == run simulation on start (without this flag gazebo not connect with ros2_controllers)
                                                                   #'-v 4' == verbose level 4 (max level of console output)
         condition=IfCondition(sim)
     )

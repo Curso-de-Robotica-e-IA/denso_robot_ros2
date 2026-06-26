@@ -17,6 +17,14 @@
    <xacro:arg name="send_format" default="288" />
    <xacro:arg name="recv_format" default="292" />
    <xacro:arg name="calib_tool" default="false" />
+   <xacro:arg name="left_cellphone_holder" default="false" />
+   <xacro:arg name="right_cellphone_holder" default="false" />
+   <xacro:arg name="cellphone_holder_xyz" default="-0.021230953 0 0.05367" />
+   <xacro:arg name="cellphone_holder_rpy" default="0 0 1.57079632679" />
+   <xacro:arg name="cellphone_holder_mesh_xyz" default="0 0 0.036991104" />
+   <xacro:arg name="cellphone_holder_mesh_rpy" default="0 0 1.57079632679" />
+   <xacro:arg name="cellphone_holder_mesh_scale" default="0.001 0.001 0.001" />
+   <xacro:arg name="cellphone_holder_tag_size" default="0.031" />
 
    <xacro:arg name="left_xyz" default="-0.417 0 0" />
    <xacro:arg name="left_rpy" default="0 0 0" />
@@ -39,7 +47,14 @@
      verbose="$(arg verbose)"
      send_format="$(arg send_format)"
      recv_format="$(arg recv_format)"
-     calib_tool="$(arg calib_tool)" >
+     calib_tool="$(arg calib_tool)"
+     cellphone_holder="$(arg left_cellphone_holder)"
+     cellphone_holder_xyz="$(arg cellphone_holder_xyz)"
+     cellphone_holder_rpy="$(arg cellphone_holder_rpy)"
+     cellphone_holder_mesh_xyz="$(arg cellphone_holder_mesh_xyz)"
+     cellphone_holder_mesh_rpy="$(arg cellphone_holder_mesh_rpy)"
+     cellphone_holder_mesh_scale="$(arg cellphone_holder_mesh_scale)"
+     cellphone_holder_tag_size="$(arg cellphone_holder_tag_size)" >
      <origin xyz="$(arg left_xyz)" rpy="$(arg left_rpy)" />
    </xacro:denso_robot>
 
@@ -55,7 +70,14 @@
      verbose="$(arg verbose)"
      send_format="$(arg send_format)"
      recv_format="$(arg recv_format)"
-     calib_tool="$(arg calib_tool)" >
+     calib_tool="$(arg calib_tool)"
+     cellphone_holder="$(arg right_cellphone_holder)"
+     cellphone_holder_xyz="$(arg cellphone_holder_xyz)"
+     cellphone_holder_rpy="$(arg cellphone_holder_rpy)"
+     cellphone_holder_mesh_xyz="$(arg cellphone_holder_mesh_xyz)"
+     cellphone_holder_mesh_rpy="$(arg cellphone_holder_mesh_rpy)"
+     cellphone_holder_mesh_scale="$(arg cellphone_holder_mesh_scale)"
+     cellphone_holder_tag_size="$(arg cellphone_holder_tag_size)" >
      <origin xyz="$(arg right_xyz)" rpy="$(arg right_rpy)" />
    </xacro:denso_robot>
 
