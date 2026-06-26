@@ -166,6 +166,9 @@ def generate_launch_description():
             'gazebo_args', default_value='-r -v 4',
             description='Arguments passed to Gazebo Sim before the world file.'))
     declared_arguments.append(
+        DeclareLaunchArgument('use_servo', default_value='false', description='Launch MoveIt Servo?')
+    )
+    declared_arguments.append(
         DeclareLaunchArgument(
             'verbose', default_value='false',
             description='Print out additional debug information.'))
@@ -250,6 +253,7 @@ def generate_launch_description():
     rviz = LaunchConfiguration('rviz')
     sim = LaunchConfiguration('sim')
     gazebo_args = LaunchConfiguration('gazebo_args')
+    use_servo = LaunchConfiguration('use_servo')
     basic_camera = LaunchConfiguration('basic_camera')
     left_cellphone_holder = LaunchConfiguration('left_cellphone_holder')
     right_cellphone_holder = LaunchConfiguration('right_cellphone_holder')
@@ -538,6 +542,7 @@ def generate_launch_description():
         package='moveit_servo',
         executable='servo_node_main',
         name='left_servo_node',
+        condition=IfCondition(use_servo),
         parameters=[
             left_servo_params,
             robot_description,
@@ -561,6 +566,7 @@ def generate_launch_description():
         package='moveit_servo',
         executable='servo_node_main',
         name='right_servo_node',
+        condition=IfCondition(use_servo),
         parameters=[
             right_servo_params,
             robot_description,
