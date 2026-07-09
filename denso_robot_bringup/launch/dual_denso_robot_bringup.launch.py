@@ -433,19 +433,16 @@ def generate_launch_description():
     joint_state_broadcaster_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        condition=UnlessCondition(sim),
         arguments=['denso_joint_state_broadcaster', '--controller-manager', '/controller_manager'])
 
     left_robot_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        condition=UnlessCondition(sim),
         arguments=[left_robot_controller, '-c', '/controller_manager'])
 
     right_robot_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        condition=UnlessCondition(sim),
         arguments=[right_robot_controller, '-c', '/controller_manager'])
 
 # --------- rviz with moveit configuration ---------
@@ -465,27 +462,6 @@ def generate_launch_description():
             ompl_planning_pipeline_config,
             robot_description_kinematics,
             {'use_sim_time': sim}
-        ])
-
-    # Static TF
-    left_static_tf = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='static_transform_publisher',
-        output='log',
-        arguments=[
-            '--frame-id', 'world',
-            '--child-frame-id', 'left_base_link'
-        ])
-    
-    right_static_tf = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='static_transform_publisher',
-        output='log',
-        arguments=[
-            '--frame-id', 'world',
-            '--child-frame-id', 'right_base_link'
         ])
 
 # --------- Gazebo Nodes (only if 'sim:=true') ---------
@@ -583,8 +559,6 @@ def generate_launch_description():
         right_robot_controller_spawner,
         move_group_node,
         rviz_node,
-        left_static_tf,
-        right_static_tf,
         gazebo,
         spawn_entity,
         ros_gz_image_bridge,

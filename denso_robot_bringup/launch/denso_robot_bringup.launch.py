@@ -439,13 +439,11 @@ def generate_launch_description():
     joint_state_broadcaster_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        condition=UnlessCondition(sim),
         arguments=['denso_joint_state_broadcaster', '--controller-manager', '/controller_manager'])
 
     robot_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        condition=UnlessCondition(sim),
         arguments=[robot_controller, '-c', '/controller_manager'])
 
 # --------- rviz with moveit configuration ---------
@@ -465,17 +463,6 @@ def generate_launch_description():
             ompl_planning_pipeline_config,
             robot_description_kinematics,
             {'use_sim_time': sim}
-        ])
-
-    # Static TF
-    static_tf = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='static_transform_publisher',
-        output='log',
-        arguments=[
-            '--frame-id', 'world',
-            '--child-frame-id', TextJoinSubstitution([namespace], 'base_link', '')
         ])
 
 # --------- Gazebo Nodes (only if 'sim:=true') ---------
@@ -543,7 +530,6 @@ def generate_launch_description():
         robot_controller_spawner,
         move_group_node,
         rviz_node,
-        static_tf,
         gazebo,
         spawn_entity,
         ros_gz_image_bridge,
