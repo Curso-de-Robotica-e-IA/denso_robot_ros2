@@ -28,6 +28,7 @@
   <exec_depend>denso_robot_descriptions</exec_depend>
   <exec_depend>denso_robot_moveit_config</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
