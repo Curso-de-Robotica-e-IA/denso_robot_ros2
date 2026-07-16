@@ -69,7 +69,7 @@
     <!-- For other tools, modify the filename parameter to the path of your tool's xacro file. -->
     <!-- The line with tag xacro:tool passes the parameters defined in your tool's xacro file -->
     <!-- (see basic_camera.xacro as an example implementation) -->
-    <xacro:if value="$(arg basic_camera)">
+    <xacro:if value="${basic_camera}">
       <xacro:include filename="$(find denso_robot_descriptions)/tools/basic_camera/urdf/basic_camera.xacro" />
     </xacro:if>
 
@@ -111,7 +111,7 @@
       <xacro:insert_block name="origin" />
     </xacro:denso_robot_arm_kinematics>
 
-    <xacro:if value="$(arg basic_camera)">
+    <xacro:if value="${basic_camera}">
       <xacro:basic_camera namespace="${namespace}" end_effector="J6" />
     </xacro:if>
 

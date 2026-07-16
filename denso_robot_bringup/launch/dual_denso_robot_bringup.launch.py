@@ -21,7 +21,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchDescription
 from launch.conditions import IfCondition, UnlessCondition
-from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from typing import Text
@@ -174,8 +174,13 @@ def generate_launch_description():
             description='Print out additional debug information.'))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'basic_camera', default_value='false',
-            description='Add basic_camera in J6'
+            'left_basic_camera', default_value='true',
+            description='Add basic_camera in left J6'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'right_basic_camera', default_value='false',
+            description='Add basic_camera in right J6'
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
@@ -184,7 +189,7 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'right_cellphone_holder', default_value='false',
+            'right_cellphone_holder', default_value='true',
             description='Add cellphone holder AprilTag markers in right J6'
         ))
     declared_arguments.append(
@@ -254,7 +259,8 @@ def generate_launch_description():
     sim = LaunchConfiguration('sim')
     gazebo_args = LaunchConfiguration('gazebo_args')
     use_servo = LaunchConfiguration('use_servo')
-    basic_camera = LaunchConfiguration('basic_camera')
+    left_basic_camera = LaunchConfiguration('left_basic_camera')
+    right_basic_camera = LaunchConfiguration('right_basic_camera')
     left_cellphone_holder = LaunchConfiguration('left_cellphone_holder')
     right_cellphone_holder = LaunchConfiguration('right_cellphone_holder')
     cellphone_holder_xyz = LaunchConfiguration('cellphone_holder_xyz')
@@ -292,7 +298,8 @@ def generate_launch_description():
             'namespace:=', namespace, ' ',
             'verbose:=', verbose, ' ',
             'sim:=', sim, ' ',
-            'basic_camera:=', basic_camera, ' ',
+            'left_basic_camera:=', left_basic_camera, ' ',
+            'right_basic_camera:=', right_basic_camera, ' ',
             'left_cellphone_holder:=', left_cellphone_holder, ' ',
             'right_cellphone_holder:=', right_cellphone_holder, ' ',
             'cellphone_holder_xyz:="', cellphone_holder_xyz, '" ',
@@ -494,12 +501,20 @@ def generate_launch_description():
         output='screen')
 
     #Node necessary to connect camera in gazebo to ROS topic
-    ros_gz_image_bridge = Node(
+    left_ros_gz_image_bridge = Node(
         package='ros_gz_image',
         executable='image_bridge',
-        arguments=['/left_basic_camera', '/right_basic_camera'], #camera topic name defined in the <topic> tag in the camera's .xacro file
+        arguments=['/left_basic_camera'], #camera topic name defined in the <topic> tag in the camera's .xacro file
         output='screen',
-        condition=IfCondition(sim and basic_camera)
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", left_basic_camera, "' == 'true'"]))
+    )
+
+    right_ros_gz_image_bridge = Node(
+        package='ros_gz_image',
+        executable='image_bridge',
+        arguments=['/right_basic_camera'], #camera topic name defined in the <topic> tag in the camera's .xacro file
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", right_basic_camera, "' == 'true'"]))
     )
 
     # Get parameters for the Servo node
@@ -561,7 +576,8 @@ def generate_launch_description():
         rviz_node,
         gazebo,
         spawn_entity,
-        ros_gz_image_bridge,
+        left_ros_gz_image_bridge,
+        right_ros_gz_image_bridge,
         robot_state_publisher_node,
         joint_state_broadcaster_spawner,
         left_servo_node,
