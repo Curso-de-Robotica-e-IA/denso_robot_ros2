@@ -1,6 +1,35 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+  <xacro:macro name="cellphone_holder_reference_frame" params="
+    namespace
+    name
+    parent
+    x
+    y
+    z:=0
+    rpy:='0 0 0'
+    visual_radius:=0.004
+    color_rgba:='0.0 0.85 1.0 1.0'">
+    <link name="${namespace}${name}">
+      <visual>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+          <sphere radius="${visual_radius}"/>
+        </geometry>
+        <material name="${namespace}${name}_material">
+          <color rgba="${color_rgba}"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="${namespace}${name}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${namespace}${name}"/>
+      <origin rpy="${rpy}" xyz="${x} ${y} ${z}"/>
+    </joint>
+  </xacro:macro>
+
   <xacro:macro name="cellphone_holder_tag" params="namespace id x y tag_size tag_thickness">
     <link name="${namespace}cellphone_holder_tag_${id}">
       <visual>
@@ -35,6 +64,10 @@
     <xacro:property name="bottom_tag_spacing" value="0.0998"/>
     <xacro:property name="side_tag_spacing" value="0.2075"/>
     <xacro:property name="side_tag_y_spacing" value="0.2074872534"/>
+    <xacro:property name="detected_tag_size" value="${tag_size * 0.8}"/>
+    <xacro:property name="top_tag_detected_outer_x" value="${top_tag_spacing / 2.0 + detected_tag_size / 2.0}"/>
+    <xacro:property name="bottom_tag_detected_outer_x" value="${bottom_tag_spacing / 2.0 + detected_tag_size / 2.0}"/>
+    <xacro:property name="tag_detected_outer_y" value="${side_tag_y_spacing / 2.0 + detected_tag_size / 2.0}"/>
 
     <link name="${namespace}cellphone_holder_mount_frame">
       <visual>
@@ -56,13 +89,54 @@
       <origin rpy="0 0 0" xyz="0 0 0"/>
     </joint>
 
-    <link name="${namespace}cellphone_holder_tags_frame"/>
+    <link name="${namespace}cellphone_holder_phone_plane_frame"/>
 
     <joint name="${namespace}cellphone_holder_joint" type="fixed">
       <parent link="${namespace}cellphone_holder_mount_frame"/>
-      <child link="${namespace}cellphone_holder_tags_frame"/>
+      <child link="${namespace}cellphone_holder_phone_plane_frame"/>
       <origin rpy="${rpy}" xyz="${xyz}"/>
     </joint>
+
+    <link name="${namespace}cellphone_holder_tags_frame"/>
+
+    <joint name="${namespace}cellphone_holder_tags_frame_joint" type="fixed">
+      <parent link="${namespace}cellphone_holder_phone_plane_frame"/>
+      <child link="${namespace}cellphone_holder_tags_frame"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+
+    <xacro:cellphone_holder_reference_frame
+      namespace="${namespace}"
+      name="cellphone_holder_tag_rectangle_center_frame"
+      parent="${namespace}cellphone_holder_tags_frame"
+      x="0"
+      y="0"
+      visual_radius="0.006"
+      color_rgba="1.0 0.85 0.0 1.0" />
+    <xacro:cellphone_holder_reference_frame
+      namespace="${namespace}"
+      name="cellphone_holder_ref_upper_left"
+      parent="${namespace}cellphone_holder_tags_frame"
+      x="${-top_tag_detected_outer_x}"
+      y="${tag_detected_outer_y}" />
+    <xacro:cellphone_holder_reference_frame
+      namespace="${namespace}"
+      name="cellphone_holder_ref_upper_right"
+      parent="${namespace}cellphone_holder_tags_frame"
+      x="${top_tag_detected_outer_x}"
+      y="${tag_detected_outer_y}" />
+    <xacro:cellphone_holder_reference_frame
+      namespace="${namespace}"
+      name="cellphone_holder_ref_lower_left"
+      parent="${namespace}cellphone_holder_tags_frame"
+      x="${-bottom_tag_detected_outer_x}"
+      y="${-tag_detected_outer_y}" />
+    <xacro:cellphone_holder_reference_frame
+      namespace="${namespace}"
+      name="cellphone_holder_ref_lower_right"
+      parent="${namespace}cellphone_holder_tags_frame"
+      x="${bottom_tag_detected_outer_x}"
+      y="${-tag_detected_outer_y}" />
 
     <xacro:cellphone_holder_tag
       namespace="${namespace}"
