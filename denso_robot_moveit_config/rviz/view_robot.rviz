@@ -6,7 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /MotionPlanning1
-        - /Left Camera1
+        - /Aruco Overlay1
         - /TF1
         - /TF1/Frames1
       Splitter Ratio: 0.4957627058029175
@@ -238,14 +238,14 @@ Visualization Manager:
       Max Value: 1
       Median window: 5
       Min Value: 0
-      Name: Left Camera
+      Name: Aruco Overlay
       Normalize Range: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /left_basic_camera
+        Value: /left_basic_camera/aruco_overlay
       Transport Hint: raw
       Value: true
     - Class: rviz_default_plugins/TF

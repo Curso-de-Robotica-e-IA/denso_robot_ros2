@@ -57,10 +57,10 @@
     <gazebo reference="${namespace}basic_camera_link">
       <sensor name="${namespace}basic_camera" type="camera">
         <camera>
-          <horizontal_fov>1.047</horizontal_fov>
+          <horizontal_fov>2.09439510239</horizontal_fov>
           <image>
-            <width>320</width>
-            <height>240</height>
+            <width>640</width>
+            <height>480</height>
           </image>
           <clip>
             <near>0.1</near>
