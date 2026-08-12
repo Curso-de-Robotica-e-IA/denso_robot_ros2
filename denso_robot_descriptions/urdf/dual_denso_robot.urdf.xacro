@@ -27,11 +27,11 @@
    <xacro:arg name="cellphone_holder_mesh_scale" default="0.001 0.001 0.001" />
    <xacro:arg name="cellphone_holder_tag_size" default="0.031" />
 
-   <xacro:arg name="left_xyz" default="-0.417 0 0" />
+   <xacro:arg name="left_xyz" default="-0.4215124298776413 -0.0001916495678773618 -0.003297428813508002" />
    <xacro:arg name="left_rpy" default="0 0 0" />
    
-   <xacro:arg name="right_xyz" default="0.417 0 0" />
-   <xacro:arg name="right_rpy" default="0 0 ${pi}" />
+   <xacro:arg name="right_xyz" default="0.4215124298776413 0.0001916495678773618 0.003297428813508002" />
+   <xacro:arg name="right_rpy" default="0.00033422052152590746 0.01496483451297317 -3.131176644926355" />
 
    <!-- Root link -->
    <link name="world"/>

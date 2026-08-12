@@ -224,7 +224,7 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'left_xyz', default_value='-0.417 0 0',
+            'left_xyz', default_value='-0.4215124298776413 -0.0001916495678773618 -0.003297428813508002',
             description='XYZ position of left arm'
         ))
     declared_arguments.append(
@@ -234,12 +234,12 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'right_xyz', default_value='0.417 0 0',
+            'right_xyz', default_value='0.4215124298776413 0.0001916495678773618 0.003297428813508002',
             description='XYZ position of right arm'
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'right_rpy', default_value='0 0 3.14159',
+            'right_rpy', default_value='0.00033422052152590746 0.01496483451297317 -3.131176644926355',
             description='RPY position of right arm'
         ))
 
