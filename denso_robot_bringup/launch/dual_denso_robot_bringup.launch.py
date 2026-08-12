@@ -324,7 +324,9 @@ def generate_launch_description():
                 [FindPackageShare(moveit_config_package), 'srdf', moveit_config_file]),
             ' ',
             'model:=', denso_robot_model, ' ',
-            'namespace:=', namespace, ' '
+            'namespace:=', namespace, ' ',
+            'left_basic_camera:=', left_basic_camera, ' ',
+            'right_basic_camera:=', right_basic_camera, ' '
         ])
     robot_description_semantic = {'robot_description_semantic': robot_description_semantic_content}
     kinematics_yaml = load_yaml('denso_robot_moveit_config', 'config/dual_kinematics.yaml')

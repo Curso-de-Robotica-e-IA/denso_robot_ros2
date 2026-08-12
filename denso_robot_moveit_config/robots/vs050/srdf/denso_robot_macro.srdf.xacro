@@ -4,7 +4,7 @@
     This is a format for representing semantic information about the robot structure.
     A URDF file must exist for this robot as well, where the joints and the links that are referenced are defined
 -->
-	<xacro:macro name="denso_robot_srdf" params="namespace calib_tool:=false">
+	<xacro:macro name="denso_robot_srdf" params="namespace calib_tool:=false basic_camera:=false">
     <!--GROUPS - Representation of a set of joints and links. This can be useful for specifying DOF to plan for, defining arms, end effectors, etc-->
     <!--LINKS - When a link is specified, the parent joint of that link (if it exists) is automatically included-->
     <!--JOINTS - When a joint is specified, the child link of that joint (which will always exist) is automatically included-->
@@ -19,8 +19,6 @@
 		<joint name="${namespace}joint_5"/>
 		<joint name="${namespace}joint_6"/>
 	</group>
-
-
     <!--GROUP STATES - Purpose - Define a named state for a particular group, in terms of joint values. This is useful to define states like 'folded arms'-->
     <!--END EFFECTOR - Purpose - Represent information about an end effector.-->
     <!--VIRTUAL JOINT - Purpose - this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
@@ -38,6 +36,12 @@
     <xacro:if value="${calib_tool}">
 	  <disable_collisions link1="${namespace}J6" link2="${namespace}calib_link" reason="Adjacent"/>
 	  <disable_collisions link1="${namespace}J5" link2="${namespace}calib_link" reason="Never"/>
+    </xacro:if>
+
+    <xacro:if value="${basic_camera}">
+	  <disable_collisions link1="${namespace}J6" link2="${namespace}basic_camera_link" reason="Adjacent"/>
+	  <disable_collisions link1="${namespace}J5" link2="${namespace}basic_camera_link" reason="Never"/>
+	  <disable_collisions link1="${namespace}basic_camera_link" link2="${namespace}basic_camera_view_axis" reason="Adjacent"/>
     </xacro:if>
 
   </xacro:macro>
