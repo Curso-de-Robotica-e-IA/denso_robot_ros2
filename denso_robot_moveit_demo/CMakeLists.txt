@@ -81,6 +81,17 @@ ament_target_dependencies(
   tf2_ros
   tf2_geometry_msgs)
 
+# Execute three right-arm poses expressed in right_J6, calling align_tool after each pose.
+add_executable(
+  execute_right_poses_and_align
+  src/execute_right_poses_and_align.cpp)
+ament_target_dependencies(
+  execute_right_poses_and_align
+  moveit_ros_planning_interface
+  rclcpp
+  rcl_interfaces
+  geometry_msgs)
+
 #=============
 # Install
 #=============
@@ -141,6 +152,14 @@ install(
   RUNTIME DESTINATION lib/${PROJECT_NAME}
   INCLUDES DESTINATION include)
 
+install(
+  TARGETS execute_right_poses_and_align
+  EXPORT export_execute_right_poses_and_align
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  INCLUDES DESTINATION include)
+
 ament_export_targets(
   export_${PROJECT_NAME}
   export_denso_robot_moveit_pickandplace
@@ -148,7 +167,8 @@ ament_export_targets(
   export_send_moveit_xyz_targets_from_json
   export_send_moveit_points_from_json
   export_send_moveit_pose_with_constraints
-  export_align_tool)
+  export_align_tool
+  export_execute_right_poses_and_align)
 
 install(
   DIRECTORY launch
