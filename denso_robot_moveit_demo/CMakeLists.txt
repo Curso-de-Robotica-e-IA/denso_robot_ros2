@@ -14,6 +14,12 @@ find_package(ament_cmake REQUIRED)
 find_package(moveit_common REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(rosidl_default_runtime REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rcl_interfaces REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 # This is the general demo
 add_executable(${PROJECT_NAME} src/${PROJECT_NAME}.cpp)
@@ -60,6 +66,20 @@ add_executable(
 ament_target_dependencies(
   send_moveit_pose_with_constraints
   moveit_ros_planning_interface)
+
+# Align left camera tool frame to right cellphone plane frame via TF + MoveIt
+add_executable(
+  align_tool
+  src/align_tool.cpp)
+ament_target_dependencies(
+  align_tool
+  moveit_ros_planning_interface
+  rclcpp
+  rcl_interfaces
+  geometry_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs)
 
 #=============
 # Install
@@ -113,13 +133,22 @@ install(
   RUNTIME DESTINATION lib/${PROJECT_NAME}
   INCLUDES DESTINATION include)
 
+install(
+  TARGETS align_tool
+  EXPORT export_align_tool
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  INCLUDES DESTINATION include)
+
 ament_export_targets(
   export_${PROJECT_NAME}
   export_denso_robot_moveit_pickandplace
   export_denso_robot_moveit_pickandplace_scara
   export_send_moveit_xyz_targets_from_json
   export_send_moveit_points_from_json
-  export_send_moveit_pose_with_constraints)
+  export_send_moveit_pose_with_constraints
+  export_align_tool)
 
 install(
   DIRECTORY launch
