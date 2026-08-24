@@ -36,7 +36,7 @@ struct Options
   std::string move_group_node = "/move_group";
   std::string right_planning_group = "right_arm";
   std::string right_target_link = "right_J6";
-  std::string right_reference_frame = "right_J6";
+  std::string right_reference_frame = "world";
   double planning_time = 8.0;
   int num_planning_attempts = 10;
   double velocity_scaling = 0.8;
@@ -246,8 +246,8 @@ int main(int argc, char ** argv)
     const std::string align_command =
       "ros2 run denso_robot_moveit_demo align_tool --ros-args"
       " -p target_offset_x_m:=0.0"
-      " -p target_offset_y_m:=-0.05"
-      " -p target_offset_z_m:=0.15"
+      " -p target_offset_y_m:=-0.04"
+      " -p target_offset_z_m:=0.25"
       " -p target_pitch_deg:=90.0"
       " -p target_yaw_deg:=0.0"
       " -p velocity_scaling:=0.8";
