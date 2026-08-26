@@ -211,7 +211,7 @@ exit_proc:
 HRESULT
 SafeArrayDestroy(SAFEARRAY *psa)
 {
-  uint32_t i;
+  int32_t i;
 
   if (psa != NULL) {
     if (psa->pvData != NULL) {
@@ -419,7 +419,7 @@ VariantCopy(VARIANT *pvargDest, const VARIANT *pvargSrc)
   VariantClear(pvargDest);
 
   if (pvargSrc->vt & VT_ARRAY) {
-    uint32_t i, lLbound = 0;
+    int32_t i, lLbound = 0;
     uint32_t cbElements = 0, cElements;
 
     lLbound = pvargSrc->parray->rgsabound[0].lLbound;
@@ -736,7 +736,6 @@ HRESULT
 VariantChangeType(VARIANT *pvargDest, VARIANT *pvarSrc, uint16_t wFlags,
     uint16_t vt)
 {
-  (void) wFlags;
   HRESULT hr = S_OK;
 
   if ((pvargDest == NULL) || (pvarSrc == NULL)) {
@@ -858,23 +857,6 @@ VariantChangeType(VARIANT *pvargDest, VARIANT *pvarSrc, uint16_t wFlags,
       return DISP_E_BADVARTYPE; \
   }
 
-  /**
-   * NOTE: -Wtype-limits is suppressed here because of the SubChangeType
-   * macro. It is reused for both signed types (int32_t, int64_t, ...)
-   * and unsigned types (uint32_t, uint64_t, used below in the
-   * SubChangeType(uint32_t, ...) and SubChangeType(uint64_t, ...) calls).
-   *
-   * When `type` is unsigned, comparisons such as `val < (type)LONG_MIN`
-   * or `val < (type)0` are statically always false (an unsigned value
-   * can never be < 0). GCC flags this even though the `IsUnsigned` guard
-   * is only resolved at runtime (via pvarSrc->vt). This is not a bug:
-   * overflow behavior remains correct — it's a structural false positive
-   * from reusing a generic macro in C (no templates / if-constexpr).
-   *
-   * See: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wtype-limits
-   */
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wtype-limits"
   switch (pvarSrc->vt) {
     case VT_EMPTY:
       switch (vt) {
@@ -933,7 +915,6 @@ VariantChangeType(VARIANT *pvargDest, VARIANT *pvarSrc, uint16_t wFlags,
     default:
       return DISP_E_BADVARTYPE;
   }
-  #pragma GCC diagnostic pop
 
   if (SUCCEEDED(hr)) {
     pvargDest->vt = vt;

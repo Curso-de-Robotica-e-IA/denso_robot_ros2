@@ -11,7 +11,7 @@
    <!-- ros2_control related parameters -->
    <xacro:arg name="verbose" default="false" />
    <xacro:arg name="sim" default="false" />
-   <xacro:arg name="gz_cam" default="false" />
+   <xacro:arg name="basic_camera" default="false" />
    <xacro:arg name="left_ip_address" default="192.168.0.1" />
    <xacro:arg name="right_ip_address" default="192.168.0.2" />
    <xacro:arg name="send_format" default="288" />
@@ -33,7 +33,7 @@
      parent="world"
      transmission_hw_interface="$(arg transmission_hw_interface)"
      sim="$(arg sim)"
-     gz_cam="$(arg gz_cam)"
+     basic_camera="$(arg basic_camera)"
      ip_address="$(arg left_ip_address)"
      verbose="$(arg verbose)"
      send_format="$(arg send_format)"
@@ -48,7 +48,7 @@
      parent="world"
      transmission_hw_interface="$(arg transmission_hw_interface)"
      sim="$(arg sim)"
-     gz_cam="$(arg gz_cam)"
+     basic_camera="$(arg basic_camera)"
      ip_address="$(arg right_ip_address)"
      verbose="$(arg verbose)"
      send_format="$(arg send_format)"
@@ -58,7 +58,7 @@
 
    <gazebo>
 	   <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
-      <parameters>$(find denso_robot_moveit_config)/robots/$(arg model)/config/dual/denso_robot_controllers.yaml</parameters>
+      <parameters>$(find denso_robot_moveit_config)/robots/$(arg model)/config/dual_denso_robot_controllers.yaml</parameters>
      </plugin>
    </gazebo>
 </robot>

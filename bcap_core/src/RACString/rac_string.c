@@ -135,7 +135,7 @@ ConvertRacStr2Variant(uint16_t vt, const char* chSrc, VARIANT* pvargDest)
       if(chTmp == NULL) { hr = E_INVALIDARG; break; }
 
       *chTmp = '\0';
-      if(strspn(chPos, " ") != (size_t)(chTmp - chPos)) {
+      if(strspn(chPos, " ") != (chTmp - chPos)) {
         hr = E_INVALIDARG;
         break;
       }
@@ -157,7 +157,7 @@ ConvertRacStr2Variant(uint16_t vt, const char* chSrc, VARIANT* pvargDest)
       if(chTmp == NULL) { hr = E_INVALIDARG; break; }
 
       *chTmp = '\0';
-      if(strspn(chPos, " 0123456789") != (size_t)(chTmp - chPos)) {
+      if(strspn(chPos, " 0123456789") != (chTmp - chPos)) {
         hr = E_INVALIDARG;
         break;
       }

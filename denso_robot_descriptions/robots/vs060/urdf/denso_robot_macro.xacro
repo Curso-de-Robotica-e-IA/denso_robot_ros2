@@ -58,7 +58,7 @@
     <!-- The line with tag xacro:tool passes the parameters defined in your tool's xacro file -->
     <!-- (see basic_camera.xacro as an example implementation) -->
     <xacro:if value="$(arg basic_camera)">
-      <xacro:include filename="$(find denso_robot_gazebo)/sensors/basic_camera/urdf/basic_camera.xacro" />
+      <xacro:include filename="$(find denso_robot_descriptions)/tools/basic_camera/urdf/basic_camera.xacro" />
     </xacro:if>
 
     <!-- ros2 control instance -->

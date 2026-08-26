@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- here you define the parameters you want your xacro file to receive. -->
+    <xacro:macro name="basic_camera" params="namespace end_effector">
+
+    <!-- if your tool has meshes, define the path to it in geometry tag. -->
+    <!-- see the vs050 robot urdf implementation as an example. -->
+    <link name="${namespace}basic_camera_link">
+		<inertial>
+			<mass value="1"/>
+			<inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+		</inertial>
+		<collision>
+			<geometry>
+				<box size="0.01 0.01 0.01"/> 
+			</geometry>
+		</collision>
+		<visual>
+			<geometry>
+				<box size="0.01 0.01 0.01"/> 
+			</geometry>
+		</visual>
+	</link>
+
+	<joint name="${namespace}basic_camera_joint" type="fixed">
+        <!-- here you define where your tool will connect. In this case, it's at joint 6. -->
+		<parent link="${namespace}${end_effector}"/> 
+		<child link="${namespace}basic_camera_link"/>
+		<origin rpy="0 ${radians(-90)} 0" xyz="0 0 0.01"/>
+	</joint>
+
+    <gazebo reference="${namespace}basic_camera_link">
+      <sensor name="${namespace}basic_camera" type="camera">
+        <camera>
+          <horizontal_fov>1.047</horizontal_fov>
+          <image>
+            <width>320</width>
+            <height>240</height>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>100</far>
+          </clip>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>30</update_rate>
+        <visualize>true</visualize>
+        <topic>${namespace}basic_camera</topic>      
+      </sensor>
+    </gazebo>
+    </xacro:macro>
+</robot>

@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
   <!--
     NOTE the macro defined in this file is NOT part of the public API of this
           package. Users CANNOT rely on this file being available, or stored in
@@ -7,6 +7,7 @@
   -->
 
   <xacro:macro name="denso_robot_arm_transmission" params="namespace hw_interface">
+
     <transmission name="${namespace}trans_1">
       <type>transmission_interface/SimpleTransmission</type>
       <joint name="${namespace}joint_1">
@@ -66,5 +67,7 @@
         <mechanicalReduction>1</mechanicalReduction>
       </actuator>
     </transmission>
+
   </xacro:macro>
+
 </robot>

@@ -3,7 +3,7 @@
 <package format="3">
   <name>denso_robot_gazebo</name>
   <version>1.0.0</version>
-  <description>Gazebo simulation support for DENSO robots. Contains world and sensor files for use in Gazebo</description>
+  <description>Gazebo simulation support for DENSO robots. Contains world files and sensor tools for use in Gazebo Fortress</description>
   <maintainer email="lpst@softex.cin.ufpe.br">Luís Paulo Trevisan</maintainer>
   <license>Apache2.0</license>
 

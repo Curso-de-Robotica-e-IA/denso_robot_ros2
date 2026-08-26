@@ -41,10 +41,9 @@
 namespace bcap_service {
 
 BCAPService::BCAPService(rclcpp::Node::SharedPtr& node, const std::string& ip_address)
-: m_type(""), m_addr(ip_address),
+: m_node(node), m_type(""), m_addr(ip_address),
 m_port(0), m_timeout(0), m_retry(0), m_wait(0),
-m_fd(0), m_wdt(0), m_invoke(0),
-m_node(node)
+m_fd(0), m_wdt(0), m_invoke(0)
 {
   try {
     m_node->declare_parameter("denso_conn_type", "tcp");
@@ -232,7 +231,7 @@ bool BCAPService::CallFunction(
   VARIANT_Ptr vntRet(new VARIANT());
   VariantInit(vntRet.get());
 
-  for(size_t i = 0; i < request->vnt_args.size(); i++) {
+  for(int i = 0; i < request->vnt_args.size(); i++) {
     VARIANT_Ptr vntTmp(new VARIANT());
     VariantInit(vntTmp.get());
     hr = ConvertRacStr2Variant(

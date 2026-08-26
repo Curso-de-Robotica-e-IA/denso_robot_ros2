@@ -277,7 +277,6 @@ static int _com_close(int sock)
 
 static int _com_send(int sock, const char *buf, uint32_t len_send, uint32_t *len_sended, void *arg)
 {
-  (void) arg;
   int ret;
   ret = write(sock, buf, len_send);
   *len_sended = ret;
@@ -286,7 +285,6 @@ static int _com_send(int sock, const char *buf, uint32_t len_send, uint32_t *len
 
 static int _com_recv(int sock, char *buf, uint32_t len_recv, uint32_t *len_recved, uint32_t timeout, void *arg)
 {
-  (void) arg;
   int ret = 0;
   HRESULT hr;
 
@@ -318,7 +316,6 @@ static HRESULT _com_set_timeout(int sock, uint32_t timeout)
 
 static HRESULT _com_clear(int sock, uint32_t timeout)
 {
-  (void) timeout;
   int ret;
   HRESULT hr = S_OK;
 

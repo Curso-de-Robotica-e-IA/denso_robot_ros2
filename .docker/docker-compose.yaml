@@ -1,3 +1,9 @@
+# Example command:
+#   on a NVIDIA system:
+#   docker compose run gpu
+#   without discrete graphics:
+#   docker compose run cpu
+
 services:
   cpu:
     build: 
@@ -17,10 +23,10 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - $XAUTHORITY:/root/.Xauthority
     environment:
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
       QT_X11_NO_MITSHM: 1
       DISPLAY: $DISPLAY
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:?Set ROS_DOMAIN_ID before starting the container}
-      IGN_GAZEBO_RESOURCE_PATH: "/root/denso_ws/src/denso_robot_gazebo/worlds"
   gpu:
     build: 
       context: ..
@@ -46,9 +52,9 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - $XAUTHORITY:/root/.Xauthority
     environment:
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
       QT_X11_NO_MITSHM: 1
       DISPLAY: $DISPLAY
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:?Set ROS_DOMAIN_ID before starting the container}
-      IGN_GAZEBO_RESOURCE_PATH: "/root/denso_ws/src/denso_robot_gazebo/worlds"
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: all

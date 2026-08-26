@@ -88,7 +88,6 @@ static int _socket_close(int sock)
 
 static HRESULT _socket_bind(const struct CONN_PARAM_ETH *param, int *sock)
 {
-  (void) sock;
   int ret;
   HRESULT hr;
   struct ifaddrs *ifaddr, *ifa;
@@ -213,7 +212,7 @@ socket_bind(const struct CONN_PARAM_ETH *param, int *sock)
 {
   int ret;
   struct sockaddr_in sockaddr =
-    { .sin_family = AF_INET, .sin_port = 0 };
+    { AF_INET, };
   HRESULT hr = S_OK;
 
   if ((param == NULL) || (sock == NULL))

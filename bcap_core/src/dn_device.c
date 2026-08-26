@@ -68,7 +68,7 @@
 static int
 is_numeric(const char *src)
 {
-  size_t len;
+  int len;
 
   /* Invalid argument */
   if ((src == NULL) || ((len = strlen(src)) == 0)) {

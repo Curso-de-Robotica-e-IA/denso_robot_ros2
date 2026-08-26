@@ -610,7 +610,6 @@ receive_execute(struct CONN_BCAP_SERVER *bcap_param)
         }
 
         send_packet = &tmp_param->last_send;
-        __attribute__((fallthrough));
 
         //break;
 

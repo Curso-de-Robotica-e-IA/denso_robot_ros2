@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
   <!--
     Base Denso robot xacro macro.
 
@@ -12,82 +12,87 @@
     Author DENSO WAVE INCORPORATED
   -->
 
-  <xacro:macro name="denso_robot" params="model
-                                          namespace
-                                          parent
-                                          *origin
-                                          transmission_hw_interface:=hardware_interface/PositionJointInterface
-                                          sim:=false
-                                          gz_cam:=false
-                                          ip_address
-                                          send_format
-                                          recv_format
-                                          verbose:=false">
+  <xacro:macro name="denso_robot" params="
+    model
+    namespace
+    parent
+    *origin
+    transmission_hw_interface:=hardware_interface/PositionJointInterface
+    sim:=false
+    basic_camera:=false
+    ip_address
+    send_format
+    recv_format
+    verbose:=false"
+  >
 
-  <!-- Robot data required by the denso driver -->
-  <xacro:arg name="ip_address" default=""/>
-  <xacro:arg name="robot_name" default="VS050A3-AV6-NNN-NNN A"/> <!-- "robot_name" param must be consistent with the @TYPE_NAME variable of the real robot !! -->
-  <xacro:arg name="robot_joints" default="6"/> <!-- number of total joints in the kinematic chain -->
-  <xacro:arg name="joint_1" default="1"/> <!-- 0 = prismatic , 1 = revolute -->
-  <xacro:arg name="joint_2" default="1"/> <!-- 0 = prismatic , 1 = revolute -->
-  <xacro:arg name="joint_3" default="1"/> <!-- 0 = prismatic , 1 = revolute -->
-  <xacro:arg name="joint_4" default="1"/> <!-- 0 = prismatic , 1 = revolute -->
-  <xacro:arg name="joint_5" default="1"/> <!-- 0 = prismatic , 1 = revolute -->
-  <xacro:arg name="joint_6" default="1"/> <!-- 0 = prismatic , 1 = revolute -->
-  <xacro:arg name="controller_type" default="8"/> <!-- 8 = RC8 , 9 = RC9 -->
-  <xacro:arg name="arm_group" default="0"/>
-  <xacro:arg name="send_format" default="288"/>
-  <xacro:arg name="recv_format" default="292"/>
-  <xacro:arg name="verbose" default="false"/>
+    <!-- Robot data required by the denso driver -->
+    <xacro:arg name="ip_address" default=""/>
+    <xacro:arg name="robot_name" default="VS050A3-AV6-NNN-NNN A"/> <!-- "robot_name" param must be consistent with the @TYPE_NAME variable of the real robot !! -->
+    <xacro:arg name="robot_joints" default="6"/> <!-- number of total joints in the kinematic chain -->
+    <xacro:arg name="joint_1" default="1"/> <!-- 0 = prismatic , 1 = revolute -->
+    <xacro:arg name="joint_2" default="1"/> <!-- 0 = prismatic , 1 = revolute -->
+    <xacro:arg name="joint_3" default="1"/> <!-- 0 = prismatic , 1 = revolute -->
+    <xacro:arg name="joint_4" default="1"/> <!-- 0 = prismatic , 1 = revolute -->
+    <xacro:arg name="joint_5" default="1"/> <!-- 0 = prismatic , 1 = revolute -->
+    <xacro:arg name="joint_6" default="1"/> <!-- 0 = prismatic , 1 = revolute -->
+    <xacro:arg name="controller_type" default="8"/> <!-- 8 = RC8 , 9 = RC9 -->
+    <xacro:arg name="arm_group" default="0"/>
+    <xacro:arg name="send_format" default="288"/>
+    <xacro:arg name="recv_format" default="292"/>
+    <xacro:arg name="verbose" default="false"/>
 
-  <!-- initial position for simulations-->
-  <xacro:arg name="initial_positions_file" default="$(find denso_robot_moveit_config)/robots/$(arg model)/config/initial_positions.yaml" />
+    <!-- initial position for simulations-->
+    <xacro:arg name="initial_positions_file" default="$(find denso_robot_descriptions)/robots/$(arg model)/initial_positions.yaml"/>
 
-  <xacro:include filename="$(find denso_robot_descriptions)/robots/$(arg model)/urdf/denso_robot_transmissions.xacro" />
-  <!-- robot kinematics include -->
-  <xacro:include filename="$(find denso_robot_descriptions)/robots/$(arg model)/urdf/denso_robot_kinematics.xacro" />
-  <!-- ros2 control include -->
-  <xacro:include filename="$(find denso_robot_descriptions)/robots/$(arg model)/urdf/denso_robot.ros2_control.xacro" />
+    <!-- convert to property to use substitution in function -->
+    <xacro:property name="initial_positions_file" default="$(arg initial_positions_file)"/>
 
-  <!-- For other tools, modify the filename parameter to the path of your tool's xacro file. -->
-  <!-- The line with tag xacro:tool passes the parameters defined in your tool's xacro file -->
-  <!-- (see gz_cam.xacro as an example implementation) -->
-  <xacro:if value="$(arg gz_cam)">
-    <xacro:include filename="$(find denso_robot_gazebo)/sensors/gz_cam/urdf/gz_cam.xacro" />
-  </xacro:if>
+    <xacro:include filename="$(find denso_robot_descriptions)/robots/$(arg model)/urdf/denso_robot_transmissions.xacro" />
+    <!-- robot kinematics include -->
+    <xacro:include filename="$(find denso_robot_descriptions)/robots/$(arg model)/urdf/denso_robot_kinematics.xacro" />
+    <!-- ros2 control include -->
+    <xacro:include filename="$(find denso_robot_descriptions)/robots/$(arg model)/urdf/denso_robot.ros2_control.xacro" />
+
+    <!-- For other tools, modify the filename parameter to the path of your tool's xacro file. -->
+    <!-- The line with tag xacro:tool passes the parameters defined in your tool's xacro file -->
+    <!-- (see basic_camera.xacro as an example implementation) -->
+    <xacro:if value="$(arg basic_camera)">
+      <xacro:include filename="$(find denso_robot_descriptions)/tools/basic_camera/urdf/basic_camera.xacro" />
+    </xacro:if>
     
-  <!-- ros2 control instance -->
-  <xacro:denso_robot_ros2_control name="VS050" 
-                                  namespace="${namespace}"
-                                  sim="$(arg sim)"
-                                  model="$(arg model)"
-                                  ip_address="${ip_address}"
-                                  robot_name="$(arg robot_name)"
-                                  robot_joints="$(arg robot_joints)"
-                                  joint_1="$(arg joint_1)"
-                                  joint_2="$(arg joint_2)"
-                                  joint_3="$(arg joint_3)"
-                                  joint_4="$(arg joint_4)"
-                                  joint_5="$(arg joint_5)"
-                                  joint_6="$(arg joint_6)"
-                                  arm_group="$(arg arm_group)"
-                                  controller_type="$(arg controller_type)"
-                                  verbose="$(arg verbose)"
-                                  send_format="$(arg send_format)"
-                                  recv_format="$(arg recv_format)"
-                                  initial_positions_file="$(arg initial_positions_file)" />
+    <!-- ros2 control instance -->
+    <xacro:denso_robot_ros2_control
+      name="GazeboSystem" namespace="${namespace}"
+      sim="$(arg sim)"
+      model="$(arg model)"
+      ip_address="${ip_address}"
+      robot_name="$(arg robot_name)"
+      robot_joints="$(arg robot_joints)"
+      joint_1="$(arg joint_1)"
+      joint_2="$(arg joint_2)"
+      joint_3="$(arg joint_3)"
+      joint_4="$(arg joint_4)"
+      joint_5="$(arg joint_5)"
+      joint_6="$(arg joint_6)"
+      arm_group="$(arg arm_group)"
+      controller_type="$(arg controller_type)"
+      verbose="$(arg verbose)"
+      send_format="$(arg send_format)"
+      recv_format="$(arg recv_format)"
+      initial_positions="${xacro.load_yaml(initial_positions_file)}" />
 
-  <!-- Add URDF transmission elements (for ros_control) -->
-  <xacro:denso_robot_arm_transmission namespace="${namespace}" hw_interface="$(arg transmission_hw_interface)" />
-  <!-- Placeholder for ros2_control transmission which don't yet exist -->
+    <!-- Add URDF transmission elements (for ros_control) -->
+    <xacro:denso_robot_arm_transmission namespace="${namespace}" hw_interface="$(arg transmission_hw_interface)" />
+    <!-- Placeholder for ros2_control transmission which don't yet exist -->
 
-  <!-- links -  main serial chain -->
-  <xacro:denso_robot_arm_kinematics namespace="${namespace}" model="$(arg model)" parent="${parent}">
-    <xacro:insert_block name="origin" />
-  </xacro:denso_robot_arm_kinematics>
+    <!-- links -  main serial chain -->
+    <xacro:denso_robot_arm_kinematics namespace="${namespace}" model="$(arg model)" parent="${parent}" >
+      <xacro:insert_block name="origin" />
+    </xacro:denso_robot_arm_kinematics>
 
-  <xacro:if value="$(arg gz_cam)">
-    <xacro:gz_cam namespace="${namespace}" />
-  </xacro:if>
+    <xacro:if value="$(arg basic_camera)">
+      <xacro:basic_camera namespace="${namespace}" end_effector="J6" />
+    </xacro:if>
   </xacro:macro>
 </robot>
