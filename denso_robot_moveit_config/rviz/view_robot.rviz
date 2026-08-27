@@ -238,14 +238,14 @@ Visualization Manager:
       Max Value: 1
       Median window: 5
       Min Value: 0
-      Name: Aruco Overlay
+      Name: Left Camera
       Normalize Range: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /left_basic_camera/aruco_overlay
+        Value: /left_basic_camera
       Transport Hint: raw
       Value: true
     - Class: rviz_default_plugins/TF

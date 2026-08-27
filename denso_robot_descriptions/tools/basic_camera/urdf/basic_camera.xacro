@@ -68,7 +68,8 @@
           </clip>
         </camera>
         <always_on>1</always_on>
-        <update_rate>30</update_rate>
+        <!-- Keep simulation and RViz responsive while preserving enough rate for alignment. -->
+        <update_rate>10</update_rate>
         <visualize>true</visualize>
         <topic>${namespace}basic_camera</topic>      
       </sensor>
