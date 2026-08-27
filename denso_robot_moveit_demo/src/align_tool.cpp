@@ -60,18 +60,40 @@ bool load_descriptions_from_move_group(
     return false;
   }
 
-  auto request = std::make_shared<rcl_interfaces::srv::GetParameters::Request>();
-  request->names = {"robot_description", "robot_description_semantic"};
-  auto future = client->async_send_request(request);
+  // A freshly-created DDS service client can discover the request endpoint before its
+  // response endpoint is fully matched.  The descriptions are large enough that the first
+  // response may then time out, especially when align_tool is spawned between robot poses.
+  // Give discovery a brief settling period and retry transient response failures.
+  constexpr int kMaxAttempts = 3;
+  std::shared_ptr<rcl_interfaces::srv::GetParameters::Response> response;
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  for (int attempt = 1; attempt <= kMaxAttempts; ++attempt) {
+    auto request = std::make_shared<rcl_interfaces::srv::GetParameters::Request>();
+    request->names = {"robot_description", "robot_description_semantic"};
+    auto future = client->async_send_request(request);
 
-  const auto rc = rclcpp::spin_until_future_complete(node, future, std::chrono::seconds(10));
-  if (rc != rclcpp::FutureReturnCode::SUCCESS) {
-    error = "Failed to query " + service_name + " for robot description parameters";
+    const auto rc = rclcpp::spin_until_future_complete(node, future, std::chrono::seconds(10));
+    if (rc == rclcpp::FutureReturnCode::SUCCESS) {
+      response = future.get();
+      break;
+    }
+
+    client->remove_pending_request(future);
+    RCLCPP_WARN(
+      node->get_logger(), "Attempt %d/%d to query %s timed out",
+      attempt, kMaxAttempts, service_name.c_str());
+    if (attempt < kMaxAttempts) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+  }
+
+  if (!response) {
+    error = "Failed to query " + service_name + " after " +
+      std::to_string(kMaxAttempts) + " attempts";
     return false;
   }
 
-  const auto response = future.get();
-  if (!response || response->values.size() != request->names.size()) {
+  if (response->values.size() != 2) {
     error = "Unexpected response size from " + service_name;
     return false;
   }
@@ -291,6 +313,17 @@ int main(int argc, char ** argv)
     move_group->clearPoseTargets();
     rclcpp::shutdown();
     return 1;
+  }
+
+  const auto & joint_trajectory = plan.trajectory_.joint_trajectory;
+  if (!joint_trajectory.points.empty() && joint_trajectory.points.back().positions.size() >= 6) {
+    constexpr double kRadToDeg = 180.0 / 3.14159265358979323846;
+    const auto & endpoint = joint_trajectory.points.back().positions;
+    RCLCPP_INFO(
+      logger,
+      "Planned endpoint [J1..J6] deg: [%.1f, %.1f, %.1f, %.1f, %.1f, %.1f]",
+      endpoint[0] * kRadToDeg, endpoint[1] * kRadToDeg, endpoint[2] * kRadToDeg,
+      endpoint[3] * kRadToDeg, endpoint[4] * kRadToDeg, endpoint[5] * kRadToDeg);
   }
 
   if (!options.plan_only) {

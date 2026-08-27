@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 #include <cstdlib>
+#include <thread>
 #include <vector>
 
 #include <boost/property_tree/json_parser.hpp>
@@ -106,23 +107,43 @@ std::vector<PoseTarget> load_poses(const std::string & path)
 bool load_descriptions_from_move_group(
   const rclcpp::Node::SharedPtr & node, const std::string & move_group_node, std::string & error)
 {
-  const std::string service_name = move_group_node + "/get_parameters";
+  std::string service_name = move_group_node;
+  if (!service_name.empty() && service_name.back() != '/') {
+    service_name += "/";
+  }
+  service_name += "get_parameters";
   const auto client = node->create_client<rcl_interfaces::srv::GetParameters>(service_name);
   if (!client->wait_for_service(std::chrono::seconds(10))) {
     error = "Timed out waiting for " + service_name;
     return false;
   }
-  auto request = std::make_shared<rcl_interfaces::srv::GetParameters::Request>();
-  request->names = {"robot_description", "robot_description_semantic"};
-  auto future = client->async_send_request(request);
-  if (rclcpp::spin_until_future_complete(node, future, std::chrono::seconds(10)) !=
-    rclcpp::FutureReturnCode::SUCCESS)
-  {
-    error = "Could not get robot descriptions from " + service_name;
+
+  constexpr int kMaxAttempts = 3;
+  std::shared_ptr<rcl_interfaces::srv::GetParameters::Response> response;
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  for (int attempt = 1; attempt <= kMaxAttempts; ++attempt) {
+    auto request = std::make_shared<rcl_interfaces::srv::GetParameters::Request>();
+    request->names = {"robot_description", "robot_description_semantic"};
+    auto future = client->async_send_request(request);
+    const auto rc = rclcpp::spin_until_future_complete(node, future, std::chrono::seconds(10));
+    if (rc == rclcpp::FutureReturnCode::SUCCESS) {
+      response = future.get();
+      break;
+    }
+    client->remove_pending_request(future);
+    RCLCPP_WARN(
+      node->get_logger(), "Attempt %d/%d to query %s timed out",
+      attempt, kMaxAttempts, service_name.c_str());
+    if (attempt < kMaxAttempts) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+  }
+  if (!response) {
+    error = "Could not get robot descriptions from " + service_name + " after " +
+      std::to_string(kMaxAttempts) + " attempts";
     return false;
   }
-  const auto response = future.get();
-  if (!response || response->values.size() != 2 ||
+  if (response->values.size() != 2 ||
     response->values[0].type != rclcpp::PARAMETER_STRING ||
     response->values[1].type != rclcpp::PARAMETER_STRING ||
     response->values[0].string_value.empty() || response->values[1].string_value.empty())
@@ -248,6 +269,7 @@ int main(int argc, char ** argv)
       " -p target_offset_x_m:=0.0"
       " -p target_offset_y_m:=-0.04"
       " -p target_offset_z_m:=0.25"
+      " -p target_roll_deg:=-90.0"
       " -p target_pitch_deg:=90.0"
       " -p target_yaw_deg:=0.0"
       " -p velocity_scaling:=0.8";
