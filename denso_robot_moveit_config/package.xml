@@ -10,7 +10,7 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <exec_depend>denso_vs050_right_arm_ikfast_plugin</exec_depend>
+  <exec_depend>denso_vs050_ikfast_plugin</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

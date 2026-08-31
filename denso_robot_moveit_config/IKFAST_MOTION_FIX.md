@@ -14,7 +14,7 @@ There was also an unrelated ROS discovery timing problem: short-lived alignment 
 
 ## What changed
 
-- The left/camera arm now uses an analytic IKFast solver; the right arm remains on KDL.
+- Both VS050 arms now instantiate the same analytic IKFast solver with separate link prefixes.
 - IKFast ranks all valid branches against the actual `/joint_states` position, with extra cost on large J1, J4 and J6 travel.
 - OMPL explicitly uses the configured `RRTConnect` profile for both arms.
 - The three-point alignment test now requests the correct mounted camera roll of `-90°`.

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(denso_vs050_right_arm_ikfast_plugin)
+project(denso_vs050_ikfast_plugin)
 
 if(NOT "${CMAKE_CXX_STANDARD}")
   set(CMAKE_CXX_STANDARD 14)
@@ -18,8 +18,8 @@ find_package(LAPACK REQUIRED)
 
 include_directories(include)
 
-set(IKFAST_LIBRARY_NAME vs050_right_arm_moveit_ikfast_plugin)
-add_library(${IKFAST_LIBRARY_NAME} SHARED src/vs050_right_arm_ikfast_moveit_plugin.cpp)
+set(IKFAST_LIBRARY_NAME vs050_moveit_ikfast_plugin)
+add_library(${IKFAST_LIBRARY_NAME} SHARED src/vs050_ikfast_moveit_plugin.cpp)
 ament_target_dependencies(${IKFAST_LIBRARY_NAME}
   rclcpp
   sensor_msgs
@@ -39,7 +39,7 @@ install(TARGETS ${IKFAST_LIBRARY_NAME}
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin)
 
-pluginlib_export_plugin_description_file(moveit_core vs050_right_arm_moveit_ikfast_plugin_description.xml)
+pluginlib_export_plugin_description_file(moveit_core vs050_moveit_ikfast_plugin_description.xml)
 
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_dependencies(moveit_core)
