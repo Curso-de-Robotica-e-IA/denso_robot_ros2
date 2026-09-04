@@ -1,9 +1,3 @@
-# Example command:
-#   on a NVIDIA system:
-#   docker compose run gpu
-#   without discrete graphics:
-#   docker compose run cpu
-
 services:
   cpu:
     build: 
@@ -12,6 +6,11 @@ services:
     image: denso_ros:humble
     privileged: true
     network_mode: host
+    cap_add:
+      - SYS_NICE
+    ulimits:
+      rtprio: 99
+      memlock: -1
     command: /bin/bash
     volumes:
       - ../:/root/denso_ws/src
@@ -21,6 +20,7 @@ services:
       QT_X11_NO_MITSHM: 1
       DISPLAY: $DISPLAY
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:?Set ROS_DOMAIN_ID before starting the container}
+      IGN_GAZEBO_RESOURCE_PATH: "/root/denso_ws/src/denso_robot_gazebo/worlds"
   gpu:
     build: 
       context: ..
@@ -28,6 +28,11 @@ services:
     image: denso_ros:humble
     privileged: true
     network_mode: host
+    cap_add:
+      - SYS_NICE
+    ulimits:
+      rtprio: 99
+      memlock: -1
     command: /bin/bash
     deploy:
       resources:
@@ -44,5 +49,6 @@ services:
       QT_X11_NO_MITSHM: 1
       DISPLAY: $DISPLAY
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:?Set ROS_DOMAIN_ID before starting the container}
+      IGN_GAZEBO_RESOURCE_PATH: "/root/denso_ws/src/denso_robot_gazebo/worlds"
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: all

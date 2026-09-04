@@ -257,7 +257,7 @@ rtk_recv(const struct CONN_PARAM_COMMON *device, union RTK_PACKET *packet_recv,
         + ((union RTK_PACKET *) buf_tmp)->len;
     if (len_recv > RTK_SIZE_PACKET) {
       len_recved--;
-      memcpy(buf_tmp, &buf_tmp[1], len_recved);
+      memmove(buf_tmp, &buf_tmp[1], len_recved);
       continue;
     }
 

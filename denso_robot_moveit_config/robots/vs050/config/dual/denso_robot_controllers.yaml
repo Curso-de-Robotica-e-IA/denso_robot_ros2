@@ -1,9 +1,7 @@
+# This config file is used by ros2_control
 controller_manager:
   ros__parameters:
-    update_rate: 1000  # Hz
-
-    denso_joint_state_broadcaster:
-      type: joint_state_broadcaster/JointStateBroadcaster
+    update_rate: 100  # Hz
 
     left_denso_joint_trajectory_controller:
       type: joint_trajectory_controller/JointTrajectoryController
@@ -11,6 +9,8 @@ controller_manager:
     right_denso_joint_trajectory_controller:
       type: joint_trajectory_controller/JointTrajectoryController
 
+    denso_joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
 
 left_denso_joint_trajectory_controller:
   ros__parameters:
@@ -33,6 +33,7 @@ left_denso_joint_trajectory_controller:
     constraints:
       stopped_velocity_tolerance: 0.0
       goal_time: 0.0
+    allow_nonzero_velocity_at_trajectory_end: true
 
 right_denso_joint_trajectory_controller:
   ros__parameters:
@@ -55,3 +56,4 @@ right_denso_joint_trajectory_controller:
     constraints:
       stopped_velocity_tolerance: 0.0
       goal_time: 0.0
+    allow_nonzero_velocity_at_trajectory_end: true

@@ -47,6 +47,7 @@ public:
 
   pointer allocate(size_type num, const void* hint = 0)
   {
+    (void) hint;
     return (pointer)( ::operator new(num * sizeof(T)));
   }
 
@@ -73,6 +74,7 @@ public:
 
   void deallocate(pointer p, size_type n)
   {
+    (void) n;
     ::operator delete((void*)p);
   }
 

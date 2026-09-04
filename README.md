@@ -1,9 +1,9 @@
 
 # ROS2 Driver Packages for DENSO Robots
 
-The DENSO robot ROS2 stack contains libraries, configuration files, and ROS2 nodes for controlling a DENSO robot from ROS2 ([MoveIt2](https://moveit.ros.org/) and [Gazebo simulator](http://gazebosim.org/)).
+The DENSO robot ROS2 stack contains libraries, configuration files, and ROS2 nodes for controlling a DENSO robot from ROS2 ([MoveIt2](https://moveit.picknik.ai/humble/index.html) and [Gazebo simulator](http://gazebosim.org/)).
 
-| ![denso_robots](denso_robot_control/docs/denso_robots.jpg) | ![denso_robot_control](denso_robot_control/docs/denso_robot_control.gif) | 
+| ![denso_robots](docs/images/denso_robots.jpg) | ![denso_robot_control](docs/images/denso_robot_control.gif) | 
 | :--: | :--: | 
 | | | 
 
@@ -25,8 +25,8 @@ The supported robot models are the following:
   - Collaborative robots (not OSS type)
 
 
-Moreover, the DENSO robot ROS2 stack provides URDF models for COBOTTA and VS-060 robotic arms and associated [MoveIt2](https://moveit.ros.org/) configuration packages (as standard components).
-To control other robot types, see the _ROS2Converter_ page (**under construction**) for creating the URDF model and the associated [MoveIt2](https://moveit.ros.org/) configuration package.
+Moreover, the DENSO robot ROS2 stack provides URDF models for COBOTTA and VS-060 robotic arms and associated [MoveIt2](https://moveit.picknik.ai/humble/index.html) configuration packages (as standard components).
+To control other robot types, see the _ROS2Converter_ page (**under construction**) for creating the URDF model and the associated [MoveIt2](https://moveit.picknik.ai/humble/index.html) configuration package.
 
 
 ## 2. Packages in the Repository
@@ -46,8 +46,8 @@ To control other robot types, see the _ROS2Converter_ page (**under construction
 
 **Motion planning packages:**
 
-  - `denso_robot_moveit_config` - [MoveIt2](https://moveit.ros.org/) configuration files for specific DENSO robot models (SRDF, controller types, etc.)
-  - `denso_robot_moveit_demo` - ROS2 node for moving a robot (both simulated and real) using the [MoveIt2](https://moveit.ros.org/) motion planner (8 fixed positions, according to the robot model)
+  - `denso_robot_moveit_config` - [MoveIt2](https://moveit.picknik.ai/humble/index.html) configuration files for specific DENSO robot models (SRDF, controller types, etc.)
+  - `denso_robot_moveit_demo` - ROS2 node for moving a robot (both simulated and real) using the [MoveIt2](https://moveit.picknik.ai/humble/index.html) motion planner (8 fixed positions, according to the robot model)
 
 **Startup package:**
 
@@ -56,12 +56,14 @@ To control other robot types, see the _ROS2Converter_ page (**under construction
 
 ## 3. Installation
 
+> **NOTE**: alternatively, a ready-to-use Docker environment is available and does not require installing ROS2 or its dependencies on the host machine. See [Docker Environment](docs/docker_environment.md)
+
 1. Install [ROS2 Humble](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html)
 
 2. Create a new ROS2 workspace:
 
    ```bash
-   export COLCON_WS=~/workspace/denso_ros2_ws
+   export COLCON_WS=~/denso_ros2_ws
    mkdir -p $COLCON_WS/src
    ```
 
@@ -69,10 +71,10 @@ To control other robot types, see the _ROS2Converter_ page (**under construction
 
    ```bash
    cd $COLCON_WS
-   git clone -b humble https://github.com/Curso-de-Robotica-e-IA/denso_robot_ros2.git src/denso_robot_drivers_ros2
+   git clone -b humble https://github.com/Curso-de-Robotica-e-IA/denso_robot_ros2.git src
    ```
 
-4. To use [MoveIt2](https://moveit.ros.org/), install the [required packages (binary installation, Humble version)](https://moveit.ros.org/install-moveit2/binary/).
+4. To use [MoveIt2](https://moveit.picknik.ai/humble/index.html), install the [required packages (binary installation, Humble version)](https://moveit.ai/install-moveit2/binary/).
 
 5. Install dependencies (if not already installed):
 
@@ -90,17 +92,8 @@ To control other robot types, see the _ROS2Converter_ page (**under construction
    source install/setup.bash
    ```
 
-## 4. ROS2 Nodes Usage
 
-Three different control modalities can be selected for DENSO robots:
-
-  - [b-CAP command interface](bcap_service/README.md)
-  - [ORiN2 command interface](denso_robot_core/README.md)
-  - [slaveMode robot control](denso_robot_control/README.md)
-  - [MoveIt Servo](denso_robot_moveit_config/README.md)
-
-
-## 5. Controller Preparation
+## 4. Controller Preparation
 
 `denso_robot_ros2` packages use [b-CAP communication](https://www.denso-wave.com/en/robot/product/function/b-CAP.html), which is ORiN2 communication standard, to control DENSO robots.
 Following are the instructions to setup DENSO hardware in order to interface DENSO ROS2 nodes with simulated or real robot.
@@ -126,8 +119,8 @@ The following steps show how to install and start a [b-CAP](https://www.denso-wa
 
 | *License registration for ORiN2 SDK* |
 |:--:| 
-| ![License registration for ORiN2 SDK - 1](denso_robot_control/docs/caoconfig_en.jpg) | 
-| ![License registration for ORiN2 SDK - 2](denso_robot_control/docs/caoconfig_registration_en.jpg) | 
+| ![License registration for ORiN2 SDK - 1](docs/images/caoconfig_en.jpg) | 
+| ![License registration for ORiN2 SDK - 2](docs/images/caoconfig_registration_en.jpg) | 
 
 
   To register licenses of VRC and WINCAPS III, use DENSO ROBOTICS _License Manager_ application.
@@ -135,8 +128,8 @@ The following steps show how to install and start a [b-CAP](https://www.denso-wa
 
 | *License registration for VRC and WINCAPSIII* |
 |:--:| 
-| ![License registration for VRC and WINCAPSIII - 1](denso_robot_control/docs/licensemanager_en.jpg) | 
-| ![License registration for VRC and WINCAPSIII - 2](denso_robot_control/docs/licensemanager_registration_en.jpg) | 
+| ![License registration for VRC and WINCAPSIII - 1](docs/images/licensemanager_en.jpg) | 
+| ![License registration for VRC and WINCAPSIII - 2](docs/images/licensemanager_registration_en.jpg) | 
 
 
 3. Change the IP address of the Windows computer so that it can be accessed from the ROS2 computer.
@@ -153,8 +146,8 @@ The following steps show how to install and start a [b-CAP](https://www.denso-wa
 
 | *b-CAP server configuration* |
 |:--:| 
-| ![b-CAP server configuration - 1](denso_robot_control/docs/bcapconfig_en.jpg) | 
-| ![b-CAP server configuration - 2](denso_robot_control/docs/bcapconfig_xml_en.jpg) | 
+| ![b-CAP server configuration - 1](docs/images/bcapconfig_en.jpg) | 
+| ![b-CAP server configuration - 2](docs/images/bcapconfig_xml_en.jpg) | 
 
 
 5. To start b-CAP server, from the Menu bar of bCapConfig, select \[Action\]-\[Service Start\].
@@ -162,7 +155,7 @@ The following steps show how to install and start a [b-CAP](https://www.denso-wa
 
 | *b-CAP server start* |
 |:--:| 
-| ![b-CAP server start](denso_robot_control/docs/bcapconfig_servicestart_en.jpg) | 
+| ![b-CAP server start](docs/images/bcapconfig_servicestart_en.jpg) | 
 
 
 6. Create a WINCAPS III project of a controlled robot.
@@ -184,7 +177,7 @@ For controlling a real DENSO robot, the RC8 controller must be configured.
 
 | *IP address configuration (RC8 controller)* |
 |:--:| 
-| ![IP address configuration (RC8 controller)](denso_robot_control/docs/ipaddress_setting_en.jpg) | 
+| ![IP address configuration (RC8 controller)](docs/images/ipaddress_setting_en.jpg) | 
 
 
 2. Set the _Executable Token_ to **"Any"** or **"Ethernet"** and set the IP address for the _Execution Token_ to the IP address of the ROS2 PC.
@@ -194,43 +187,87 @@ For controlling a real DENSO robot, the RC8 controller must be configured.
 
 | *Executable Token configuration (RC8 controller)* |
 |:--:| 
-| ![Executable Token configuration (RC8 controller)](denso_robot_control/docs/executable_token.png) | 
+| ![Executable Token configuration (RC8 controller)](docs/images/executable_token.png) | 
 
 
-**FOLLOWING STEPS ARE ONLY REQUIRED IN CASE THE** [slaveMode robot control](denso_robot_control/README.md) **MODALITY IS SELECTED !!**
+**FOLLOWING STEPS ARE ONLY REQUIRED IN CASE THE** [SlaveMode robot control](docs/SlaveMode.md) **MODALITY IS SELECTED !!**
 
-3. To control an RC8 controller with [MoveIt2](https://moveit.ros.org/), use _b-CAP Slave_ function.
+3. To control an RC8 controller with [MoveIt2](https://moveit.picknik.ai/humble/index.html), use _b-CAP Slave_ function.
     To activate the _b-CAP Slave_ function, please check the license of the RC8 from the DENSO WAVE member site (logon required).
 
 | *DENSO WAVE member site logon* |
 |:--:| 
-| ![DENSO WAVE member site logon](denso_robot_control/docs/member_site_en.jpg) | 
+| ![DENSO WAVE member site logon](docs/images/member_site_en.jpg) | 
 
 
 4. Read RC8 serial number from the teach pendant.
 
 | *Read RC8 controller serial number* |
 |:--:| 
-| ![Read RC8 controller serial number](denso_robot_control/docs/serial_number_en.jpg) | 
+| ![Read RC8 controller serial number](docs/images/serial_number_en.jpg) | 
 
 
 5. Check the _b-CAP Slave_ license from the _RC8 Free License Confirmation_ page on the DENSO WAVE member site.
 
 | *b-CAP Slave license generation* |
 |:--:| 
-| ![b-CAP Slave license generation - 1](denso_robot_control/docs/free_license_en.jpg) | 
-| ![b-CAP Slave license generation - 2](denso_robot_control/docs/b-CAP_Slave_en.jpg) | 
+| ![b-CAP Slave license generation - 1](docs/images/free_license_en.jpg) | 
+| ![b-CAP Slave license generation - 2](docs/images/b-CAP_Slave_en.jpg) | 
 
 
 6. Register the license key confirmed in _RC8 Free License Confirmation_ page in the RC8 controller. Reboot the RC8 controller after the license registration.
 
 | *b-CAP Slave license registration* |
 |:--:| 
-| ![b-CAP Slave license registration](denso_robot_control/docs/registration_en.jpg) | 
+| ![b-CAP Slave license registration](docs/images/registration_en.jpg) | 
 
 
-7. Create a robot definition file: `denso_robot_ros package` provides URDF models for _cobotta_ and _vs060_ robots, and associated [MoveIt2](https://moveit.ros.org/) configuration packages as standard components.
+7. Create a robot definition file: `denso_robot_ros package` provides URDF models for _cobotta_ and _vs060_ robots, and associated [MoveIt2](https://moveit.picknik.ai/humble/index.html) configuration packages as standard components.
     To control other robot types, see the _ROS2Converter_ page (**under construction**).
 
-8. Set speed/acceleration parameters: the URDF models and the associated [MoveIt2](https://moveit.ros.org/) configuration packages created by _ROS2Converter_ have dummy speed/acceleration parameters.
+8. Set speed/acceleration parameters: the URDF models and the associated [MoveIt2]https://moveit.picknik.ai/humble/index.html) configuration packages created by _ROS2Converter_ have dummy speed/acceleration parameters.
     To specify the actual speed/acceleration parameters, see the _AcquireVelAcc_ page (**under construction**).
+
+
+## 5. ROS2 Nodes Usage
+
+Three different control modalities can be selected for DENSO robots:
+
+  - [b-CAP command interface](docs/b-CAP.md)
+  - [ORiN2 command interface](docs/ORiN2.md)
+  - [SlaveMode robot control](docs/SlaveMode.md)
+
+## 6. Single-Arm and Dual-Arm Setups
+
+The DENSO ROS2 stack supports both single-arm and dual-arm configurations, using dedicated launch files in the `denso_robot_bringup` package. The only difference between the two setups is which launch file you use — `denso_robot_bringup.launch.py` for single-arm, or `dual_denso_robot_bringup.launch.py` for dual-arm — the rest of the arguments work the same way.
+
+The arguments for launch files can be listed using:
+
+```bash
+ros2 launch denso_robot_bringup denso_robot_bringup.launch.py --show-args
+```
+
+For dual-arm (**VS-050 only**):
+
+```bash
+ros2 launch denso_robot_bringup dual_denso_robot_bringup.launch.py --show-args
+```
+
+Example (simulated single-arm VS-050 with simulator camera and RViz):
+```bash
+ros2 launch denso_robot_bringup denso_robot_bringup.launch.py model:=vs050 sim:=true gz_cam:=true rviz:=true
+```
+
+For more information, see [SlaveMode robot control](docs/SlaveMode.md).
+
+
+## 6. Additional Documentation
+
+Further documentation is available in the [`docs/`](docs/) directory:
+
+  - [Frame Conventions](docs/frame_conventions.md) - coordinate frame and naming conventions used across the robot and tool packages
+  - [Docker Environment](docs/docker_environment.md) - running the DENSO ROS2 stack in a containerized environment with RViz2 and Gazebo Fortress
+  - [MoveIt Servo](docs/moveit_servo.md) - robot arm control via TwistStamped and JointJog
+  - [Adding Custom Tools](docs/adding_custom_tools.md) - how to add new tools (end-effectors) to the robot description package
+  - [Adding sensors on Gazebo](docs/gazebo_simulation.md) - how to add sensors to the Gazebo simulation
+  

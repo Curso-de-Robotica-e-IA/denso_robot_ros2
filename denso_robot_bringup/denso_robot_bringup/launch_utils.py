@@ -46,7 +46,7 @@ def control_node(robot_controllers_path, bcap_slave_control_cycle_msec, sim):
 
     return control_node
 
-def controller_spawner(controller):
+def controller_spawner(controller, use_sim_time):
 
     controller_spawner = Node(
         package='controller_manager',
@@ -55,18 +55,13 @@ def controller_spawner(controller):
             controller,
             '-c',
             '/controller_manager'
-        ]
+        ],
+        parameters=[{'use_sim_time': use_sim_time}]
     )
 
     return controller_spawner
 
 def move_group(move_config, use_sim_time):
-    occupancy_map_monitor_parameters = {
-        'sensors': ['3D_sensor'],
-        '3D_sensor': {
-            'sensor_plugin': '', #'~'
-        },
-    }
 
     move_group = Node(
         package='moveit_ros_move_group',
@@ -74,7 +69,6 @@ def move_group(move_config, use_sim_time):
         output='screen',
         parameters=[
             move_config.to_dict(),
-            occupancy_map_monitor_parameters,
             {'use_sim_time': use_sim_time}
         ]
     )
@@ -102,7 +96,7 @@ def rviz(moveit_config, launch_rviz, use_sim_time):
 
     return rviz
 
-def static_tf(child_frame):
+def static_tf(child_frame, use_sim_time):
 
     static_tf = Node(
         package='tf2_ros',
@@ -112,6 +106,9 @@ def static_tf(child_frame):
         arguments=[
             '--frame-id', 'world',
             '--child-frame-id', child_frame
+        ],
+        parameters=[
+            {'use_sim_time': use_sim_time}
         ]
     )
 
@@ -146,7 +143,7 @@ def moveit_servo(moveit_config, sim, arm=None):
         servo_params = (
             servo_params
             .parameter('moveit_servo.move_group_name', 'left_arm')
-            .parameter('moveit_servo.planning_frame', 'world')
+            .parameter('moveit_servo.planning_frame', 'left_base_link')
             .parameter('moveit_servo.ee_frame_name', 'left_J6')
             .parameter('moveit_servo.robot_link_command_frame', 'left_base_link')
             .parameter('moveit_servo.command_out_topic', '/left_denso_joint_trajectory_controller/joint_trajectory')
@@ -155,7 +152,7 @@ def moveit_servo(moveit_config, sim, arm=None):
         servo_params = (
             servo_params
             .parameter('moveit_servo.move_group_name', 'right_arm')
-            .parameter('moveit_servo.planning_frame', 'world')
+            .parameter('moveit_servo.planning_frame', 'right_base_link')
             .parameter('moveit_servo.ee_frame_name', 'right_J6')
             .parameter('moveit_servo.robot_link_command_frame', 'right_base_link')
             .parameter('moveit_servo.command_out_topic', '/right_denso_joint_trajectory_controller/joint_trajectory')

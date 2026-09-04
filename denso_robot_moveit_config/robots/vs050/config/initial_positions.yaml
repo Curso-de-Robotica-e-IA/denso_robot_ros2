@@ -1,0 +1,9 @@
+# Default initial positions for vs050's ros2_control fake system
+
+initial_positions:
+  joint_1: 0
+  joint_2: -0.5
+  joint_3: 1.2
+  joint_4: 0
+  joint_5: 1.5
+  joint_6: 0

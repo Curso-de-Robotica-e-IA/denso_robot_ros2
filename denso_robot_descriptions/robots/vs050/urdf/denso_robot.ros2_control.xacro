@@ -1,22 +1,31 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:macro name="denso_robot_ros2_control" params="name namespace
-	robot_name
-    sim:=false fake_sensor_commands:=false
-    ip_address
-    model
-    robot_joints joint_1 joint_2 joint_3 joint_4 joint_5 joint_6
-    arm_group
-    send_format recv_format
-	controller_type
-    verbose
-    initial_positions
-    ">
+  <xacro:macro name="denso_robot_ros2_control"
+               params="name 
+                       namespace
+                       robot_name
+                       sim:=false
+                       fake_sensor_commands:=false
+                       ip_address
+                       model
+                       robot_joints
+                       joint_1
+                       joint_2
+                       joint_3
+                       joint_4
+                       joint_5
+                       joint_6
+                       arm_group
+                       send_format
+                       recv_format
+                       controller_type
+                       verbose
+                       initial_positions_file">
 
     <ros2_control name="${namespace}${name}" type="system">
-	<!-- joint limits include -->
-	<xacro:include filename="$(find denso_robot_descriptions)/robots/$(arg model)/urdf/denso_robot_joint_limits.xacro" />
+	  <!-- joint limits include -->
+	  <xacro:include filename="$(find denso_robot_descriptions)/robots/$(arg model)/urdf/denso_robot_joint_limits.xacro" />
       <hardware>
         <xacro:if value="${sim}">
       	  <plugin>gz_ros2_control/GazeboSimSystem</plugin>
@@ -24,7 +33,7 @@
         <xacro:unless value="${sim}">
           <plugin>denso_robot_control/DensoRobotHW</plugin>
           <param name="ip_address">${ip_address}</param>
-<!-- "robot_name" param must be consistent with the @TYPE_NAME variable of the real robot !!  -->
+          <!-- "robot_name" param must be consistent with the @TYPE_NAME variable of the real robot !!  -->
           <param name="robot_name">${robot_name}</param>
           <param name="node_name">denso_robot_control</param>
           <param name="node_namespace">${namespace}${model}</param>
@@ -43,8 +52,7 @@
         </xacro:unless>
       </hardware>
 
-      <xacro:denso_robot_control_limits namespace="${namespace}" initial_positions="${initial_positions}" />
+      <xacro:denso_robot_control_limits namespace="${namespace}" initial_positions_file="${initial_positions_file}" />
     </ros2_control>
   </xacro:macro>
-
 </robot>
