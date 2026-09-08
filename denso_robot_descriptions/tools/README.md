@@ -1,5 +1,26 @@
 # Adding Custom Tools to DENSO Robot Descriptions
 
+## Quick Start
+
+Build the updated description / bringup packages:
+
+```bash
+colcon build --packages-select denso_robot_descriptions denso_robot_bringup
+source install/setup.bash
+```
+
+Single VS050 with the cellphone holder:
+
+```bash
+ros2 launch denso_robot_bringup denso_robot_bringup.launch.py model:=vs050 sim:=true rviz:=true cellphone_holder:=true use_servo:=false
+```
+
+Dual VS050 with a left camera and a right cellphone holder:
+
+```bash
+ros2 launch denso_robot_bringup dual_denso_robot_bringup.launch.py model:=vs050 sim:=true rviz:=true left_basic_camera:=true right_cellphone_holder:=true use_servo:=false
+```
+
 This document outlines the procedure for adding new tools (end-effectors) to the DENSO robot description package.
 
 ## Package Structure

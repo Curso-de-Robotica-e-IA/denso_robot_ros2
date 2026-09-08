@@ -11,18 +11,27 @@
    <!-- ros2_control related parameters -->
    <xacro:arg name="verbose" default="false" />
    <xacro:arg name="sim" default="false" />
-   <xacro:arg name="basic_camera" default="false" />
+   <xacro:arg name="left_basic_camera" default="true" />
+   <xacro:arg name="right_basic_camera" default="false" />
    <xacro:arg name="left_ip_address" default="192.168.0.1" />
    <xacro:arg name="right_ip_address" default="192.168.0.2" />
    <xacro:arg name="send_format" default="288" />
    <xacro:arg name="recv_format" default="292" />
    <xacro:arg name="calib_tool" default="false" />
+   <xacro:arg name="left_cellphone_holder" default="false" />
+   <xacro:arg name="right_cellphone_holder" default="true" />
+   <xacro:arg name="cellphone_holder_xyz" default="-0.021230953 0 0.05367" />
+   <xacro:arg name="cellphone_holder_rpy" default="0 0 1.57079632679" />
+   <xacro:arg name="cellphone_holder_mesh_xyz" default="0 0 0.036991104" />
+   <xacro:arg name="cellphone_holder_mesh_rpy" default="0 0 1.57079632679" />
+   <xacro:arg name="cellphone_holder_mesh_scale" default="0.001 0.001 0.001" />
+   <xacro:arg name="cellphone_holder_tag_size" default="0.031" />
 
-   <xacro:arg name="left_xyz" default="-0.417 0 0" />
+   <xacro:arg name="left_xyz" default="-0.4215124298776413 -0.0001916495678773618 -0.003297428813508002" />
    <xacro:arg name="left_rpy" default="0 0 0" />
    
-   <xacro:arg name="right_xyz" default="0.417 0 0" />
-   <xacro:arg name="right_rpy" default="0 0 ${pi}" />
+   <xacro:arg name="right_xyz" default="0.4215124298776413 0.0001916495678773618 0.003297428813508002" />
+   <xacro:arg name="right_rpy" default="0.00033422052152590746 0.01496483451297317 -3.131176644926355" />
 
    <!-- Root link -->
    <link name="world"/>
@@ -34,12 +43,19 @@
      parent="world"
      transmission_hw_interface="$(arg transmission_hw_interface)"
      sim="$(arg sim)"
-     basic_camera="$(arg basic_camera)"
+     basic_camera="$(arg left_basic_camera)"
      ip_address="$(arg left_ip_address)"
      verbose="$(arg verbose)"
      send_format="$(arg send_format)"
      recv_format="$(arg recv_format)"
-     calib_tool="$(arg calib_tool)" >
+     calib_tool="$(arg calib_tool)"
+     cellphone_holder="$(arg left_cellphone_holder)"
+     cellphone_holder_xyz="$(arg cellphone_holder_xyz)"
+     cellphone_holder_rpy="$(arg cellphone_holder_rpy)"
+     cellphone_holder_mesh_xyz="$(arg cellphone_holder_mesh_xyz)"
+     cellphone_holder_mesh_rpy="$(arg cellphone_holder_mesh_rpy)"
+     cellphone_holder_mesh_scale="$(arg cellphone_holder_mesh_scale)"
+     cellphone_holder_tag_size="$(arg cellphone_holder_tag_size)" >
      <origin xyz="$(arg left_xyz)" rpy="$(arg left_rpy)" />
    </xacro:denso_robot>
 
@@ -50,12 +66,19 @@
      parent="world"
      transmission_hw_interface="$(arg transmission_hw_interface)"
      sim="$(arg sim)"
-     basic_camera="$(arg basic_camera)"
+     basic_camera="$(arg right_basic_camera)"
      ip_address="$(arg right_ip_address)"
      verbose="$(arg verbose)"
      send_format="$(arg send_format)"
      recv_format="$(arg recv_format)"
-     calib_tool="$(arg calib_tool)" >
+     calib_tool="$(arg calib_tool)"
+     cellphone_holder="$(arg right_cellphone_holder)"
+     cellphone_holder_xyz="$(arg cellphone_holder_xyz)"
+     cellphone_holder_rpy="$(arg cellphone_holder_rpy)"
+     cellphone_holder_mesh_xyz="$(arg cellphone_holder_mesh_xyz)"
+     cellphone_holder_mesh_rpy="$(arg cellphone_holder_mesh_rpy)"
+     cellphone_holder_mesh_scale="$(arg cellphone_holder_mesh_scale)"
+     cellphone_holder_tag_size="$(arg cellphone_holder_tag_size)" >
      <origin xyz="$(arg right_xyz)" rpy="$(arg right_rpy)" />
    </xacro:denso_robot>
 

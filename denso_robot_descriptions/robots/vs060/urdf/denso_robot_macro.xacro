@@ -20,6 +20,18 @@
     transmission_hw_interface:=hardware_interface/PositionJointInterface
     sim:=false
     basic_camera:=false
+    calib_tool:=false
+    calib_xyz:='0 0 0.05'
+    calib_rpy:='0 0 0'
+    calib_mesh_xyz:='0 0 -0.05'
+    calib_mesh_rpy:='0 0 0'
+    cellphone_holder:=false
+    cellphone_holder_xyz:='-0.021230953 0 0.05367'
+    cellphone_holder_rpy:='0 0 1.57079632679'
+    cellphone_holder_mesh_xyz:='0 0 0.036991104'
+    cellphone_holder_mesh_rpy:='0 0 1.57079632679'
+    cellphone_holder_mesh_scale:='0.001 0.001 0.001'
+    cellphone_holder_tag_size:=0.031
     ip_address
     send_format
     recv_format
@@ -57,8 +69,16 @@
     <!-- For other tools, modify the filename parameter to the path of your tool's xacro file. -->
     <!-- The line with tag xacro:tool passes the parameters defined in your tool's xacro file -->
     <!-- (see basic_camera.xacro as an example implementation) -->
-    <xacro:if value="$(arg basic_camera)">
+    <xacro:if value="${basic_camera}">
       <xacro:include filename="$(find denso_robot_descriptions)/tools/basic_camera/urdf/basic_camera.xacro" />
+    </xacro:if>
+
+    <xacro:if value="${calib_tool}">
+      <xacro:include filename="$(find denso_robot_descriptions)/tools/calibration_tool/urdf/calib.xacro" />
+    </xacro:if>
+
+    <xacro:if value="${cellphone_holder}">
+      <xacro:include filename="$(find denso_robot_descriptions)/tools/cellphone_holder/urdf/cellphone_holder.xacro" />
     </xacro:if>
 
     <!-- ros2 control instance -->
@@ -91,8 +111,30 @@
       <xacro:insert_block name="origin" />
     </xacro:denso_robot_arm_kinematics>
 
-    <xacro:if value="$(arg basic_camera)">
+    <xacro:if value="${basic_camera}">
       <xacro:basic_camera namespace="${namespace}" end_effector="J6" />
+    </xacro:if>
+
+    <xacro:if value="${calib_tool}">
+      <xacro:calib
+        namespace="${namespace}"
+        end_effector="J6"
+        xyz="${calib_xyz}"
+        rpy="${calib_rpy}"
+        mesh_xyz="${calib_mesh_xyz}"
+        mesh_rpy="${calib_mesh_rpy}" />
+    </xacro:if>
+
+    <xacro:if value="${cellphone_holder}">
+      <xacro:cellphone_holder
+        namespace="${namespace}"
+        end_effector="J6"
+        xyz="${cellphone_holder_xyz}"
+        rpy="${cellphone_holder_rpy}"
+        mesh_xyz="${cellphone_holder_mesh_xyz}"
+        mesh_rpy="${cellphone_holder_mesh_rpy}"
+        mesh_scale="${cellphone_holder_mesh_scale}"
+        tag_size="${cellphone_holder_tag_size}" />
     </xacro:if>
   </xacro:macro>
 </robot>

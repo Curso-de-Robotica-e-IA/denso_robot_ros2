@@ -21,7 +21,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchDescription
 from launch.conditions import IfCondition, UnlessCondition
-from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from typing import Text
@@ -163,16 +163,68 @@ def generate_launch_description():
             description='Start robot with fake hardware mirroring command to its states.'))
     declared_arguments.append(
         DeclareLaunchArgument(
+            'gazebo_args', default_value='-r -v 4',
+            description='Arguments passed to Gazebo Sim before the world file.'))
+    declared_arguments.append(
+        DeclareLaunchArgument('use_servo', default_value='false', description='Launch MoveIt Servo?')
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
             'verbose', default_value='false',
             description='Print out additional debug information.'))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'basic_camera', default_value='false',
-            description='Add basic_camera in J6'
+            'left_basic_camera', default_value='true',
+            description='Add basic_camera in left J6'
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'left_xyz', default_value='-0.417 0 0',
+            'right_basic_camera', default_value='false',
+            description='Add basic_camera in right J6'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'left_cellphone_holder', default_value='false',
+            description='Add cellphone holder AprilTag markers in left J6'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'right_cellphone_holder', default_value='true',
+            description='Add cellphone holder AprilTag markers in right J6'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'cellphone_holder_xyz', default_value='-0.021230953 0 0.05367',
+            description='XYZ position of cellphone holder tag plane relative to J6'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'cellphone_holder_rpy', default_value='0 0 1.57079632679',
+            description='RPY orientation of cellphone holder tag plane relative to J6'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'cellphone_holder_mesh_xyz', default_value='0 0 0.036991104',
+            description='XYZ offset of cellphone holder STL relative to the tag plane frame'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'cellphone_holder_mesh_rpy', default_value='0 0 1.57079632679',
+            description='RPY offset of cellphone holder STL relative to the tag plane frame'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'cellphone_holder_mesh_scale', default_value='0.001 0.001 0.001',
+            description='Scale of cellphone holder STL mesh'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'cellphone_holder_tag_size', default_value='0.031',
+            description='Visual side length of each cellphone holder AprilTag marker'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'left_xyz', default_value='-0.4215124298776413 -0.0001916495678773618 -0.003297428813508002',
             description='XYZ position of left arm'
         ))
     declared_arguments.append(
@@ -182,12 +234,12 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'right_xyz', default_value='0.417 0 0',
+            'right_xyz', default_value='0.4215124298776413 0.0001916495678773618 0.003297428813508002',
             description='XYZ position of right arm'
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'right_rpy', default_value='0 0 3.14159',
+            'right_rpy', default_value='0.00033422052152590746 0.01496483451297317 -3.131176644926355',
             description='RPY position of right arm'
         ))
 
@@ -205,7 +257,18 @@ def generate_launch_description():
     namespace = LaunchConfiguration('namespace')
     rviz = LaunchConfiguration('rviz')
     sim = LaunchConfiguration('sim')
-    basic_camera = LaunchConfiguration('basic_camera')
+    gazebo_args = LaunchConfiguration('gazebo_args')
+    use_servo = LaunchConfiguration('use_servo')
+    left_basic_camera = LaunchConfiguration('left_basic_camera')
+    right_basic_camera = LaunchConfiguration('right_basic_camera')
+    left_cellphone_holder = LaunchConfiguration('left_cellphone_holder')
+    right_cellphone_holder = LaunchConfiguration('right_cellphone_holder')
+    cellphone_holder_xyz = LaunchConfiguration('cellphone_holder_xyz')
+    cellphone_holder_rpy = LaunchConfiguration('cellphone_holder_rpy')
+    cellphone_holder_mesh_xyz = LaunchConfiguration('cellphone_holder_mesh_xyz')
+    cellphone_holder_mesh_rpy = LaunchConfiguration('cellphone_holder_mesh_rpy')
+    cellphone_holder_mesh_scale = LaunchConfiguration('cellphone_holder_mesh_scale')
+    cellphone_holder_tag_size = LaunchConfiguration('cellphone_holder_tag_size')
     verbose = LaunchConfiguration('verbose')
     controllers_file = LaunchConfiguration('controllers_file')
     left_robot_controller = LaunchConfiguration('left_robot_controller')
@@ -235,7 +298,16 @@ def generate_launch_description():
             'namespace:=', namespace, ' ',
             'verbose:=', verbose, ' ',
             'sim:=', sim, ' ',
-            'basic_camera:=', basic_camera, ' ',
+            'left_basic_camera:=', left_basic_camera, ' ',
+            'right_basic_camera:=', right_basic_camera, ' ',
+            'left_cellphone_holder:=', left_cellphone_holder, ' ',
+            'right_cellphone_holder:=', right_cellphone_holder, ' ',
+            'cellphone_holder_xyz:="', cellphone_holder_xyz, '" ',
+            'cellphone_holder_rpy:="', cellphone_holder_rpy, '" ',
+            'cellphone_holder_mesh_xyz:="', cellphone_holder_mesh_xyz, '" ',
+            'cellphone_holder_mesh_rpy:="', cellphone_holder_mesh_rpy, '" ',
+            'cellphone_holder_mesh_scale:="', cellphone_holder_mesh_scale, '" ',
+            'cellphone_holder_tag_size:=', cellphone_holder_tag_size, ' ',
             'left_xyz:="', left_xyz, '" ',
             'left_rpy:="', left_rpy, '" ',
             'right_xyz:="', right_xyz, '" ',
@@ -252,7 +324,9 @@ def generate_launch_description():
                 [FindPackageShare(moveit_config_package), 'srdf', moveit_config_file]),
             ' ',
             'model:=', denso_robot_model, ' ',
-            'namespace:=', namespace, ' '
+            'namespace:=', namespace, ' ',
+            'left_basic_camera:=', left_basic_camera, ' ',
+            'right_basic_camera:=', right_basic_camera, ' '
         ])
     robot_description_semantic = {'robot_description_semantic': robot_description_semantic_content}
     kinematics_yaml = load_yaml('denso_robot_moveit_config', 'config/dual_kinematics.yaml')
@@ -374,7 +448,7 @@ def generate_launch_description():
         package='controller_manager',
         executable='spawner',
         arguments=[left_robot_controller, '-c', '/controller_manager'])
-    
+
     right_robot_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
@@ -395,28 +469,8 @@ def generate_launch_description():
             robot_description,
             robot_description_semantic,
             ompl_planning_pipeline_config,
-            robot_description_kinematics
-        ])
-
-    # Static TF
-    left_static_tf = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='static_transform_publisher',
-        output='log',
-        arguments=[
-            '--frame-id', 'world',
-            '--child-frame-id', 'left_base_link'
-        ])
-    
-    right_static_tf = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='static_transform_publisher',
-        output='log',
-        arguments=[
-            '--frame-id', 'world',
-            '--child-frame-id', 'right_base_link'
+            robot_description_kinematics,
+            {'use_sim_time': sim}
         ])
 
 # --------- Gazebo Nodes (only if 'sim:=true') ---------
@@ -436,7 +490,7 @@ def generate_launch_description():
                 'gz_sim.launch.py'
             ])
         ),
-        launch_arguments={'gz_args': ['-r', '-v4', ' ', world]}.items(), #'-r' == run simulation on start (without this flag gazebo not connect with ros2_controllers)
+        launch_arguments={'gz_args': [gazebo_args, ' ', world]}.items(), #'-r' == run simulation on start (without this flag gazebo not connect with ros2_controllers)
                                                                   #'-v 4' == verbose level 4 (max level of console output)
         condition=IfCondition(sim)
     )
@@ -449,12 +503,20 @@ def generate_launch_description():
         output='screen')
 
     #Node necessary to connect camera in gazebo to ROS topic
-    ros_gz_image_bridge = Node(
+    left_ros_gz_image_bridge = Node(
         package='ros_gz_image',
         executable='image_bridge',
-        arguments=['/left_basic_camera', '/right_basic_camera'], #camera topic name defined in the <topic> tag in the camera's .xacro file
+        arguments=['/left_basic_camera'], #camera topic name defined in the <topic> tag in the camera's .xacro file
         output='screen',
-        condition=IfCondition(sim and basic_camera)
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", left_basic_camera, "' == 'true'"]))
+    )
+
+    right_ros_gz_image_bridge = Node(
+        package='ros_gz_image',
+        executable='image_bridge',
+        arguments=['/right_basic_camera'], #camera topic name defined in the <topic> tag in the camera's .xacro file
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", right_basic_camera, "' == 'true'"]))
     )
 
     # Get parameters for the Servo node
@@ -473,6 +535,7 @@ def generate_launch_description():
         package='moveit_servo',
         executable='servo_node_main',
         name='left_servo_node',
+        condition=IfCondition(use_servo),
         parameters=[
             left_servo_params,
             robot_description,
@@ -496,6 +559,7 @@ def generate_launch_description():
         package='moveit_servo',
         executable='servo_node_main',
         name='right_servo_node',
+        condition=IfCondition(use_servo),
         parameters=[
             right_servo_params,
             robot_description,
@@ -512,11 +576,10 @@ def generate_launch_description():
         right_robot_controller_spawner,
         move_group_node,
         rviz_node,
-        left_static_tf,
-        right_static_tf,
         gazebo,
         spawn_entity,
-        ros_gz_image_bridge,
+        left_ros_gz_image_bridge,
+        right_ros_gz_image_bridge,
         robot_state_publisher_node,
         joint_state_broadcaster_spawner,
         left_servo_node,

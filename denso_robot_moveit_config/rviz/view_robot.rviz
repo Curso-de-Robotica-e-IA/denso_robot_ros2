@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /MotionPlanning1
+        - /Aruco Overlay1
         - /TF1
         - /TF1/Frames1
       Splitter Ratio: 0.4957627058029175
@@ -149,9 +150,9 @@ Visualization Manager:
         Colliding Link Color: 255; 0; 0
         Goal State Alpha: 1
         Goal State Color: 250; 128; 0
-        Interactive Marker Size: 0
+        Interactive Marker Size: 0.1
         Joint Violation Color: 255; 0; 255
-        Planning Group: arm
+        Planning Group: right_arm
         Query Goal State: false
         Query Start State: false
         Show Workspace: false
@@ -232,6 +233,21 @@ Visualization Manager:
         Show Robot Visual: true
       Value: true
       Velocity_Scaling_Factor: 0.1
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Left Camera
+      Normalize Range: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /left_basic_camera
+      Transport Hint: raw
+      Value: true
     - Class: rviz_default_plugins/TF
       Enabled: true
       Frame Timeout: 15

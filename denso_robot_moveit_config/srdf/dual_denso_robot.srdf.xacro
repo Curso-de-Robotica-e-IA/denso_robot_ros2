@@ -3,13 +3,15 @@
 
   <!-- robot name parameter -->
   <xacro:arg name="model" default="denso_robot"/>
+  <xacro:arg name="left_basic_camera" default="true"/>
+  <xacro:arg name="right_basic_camera" default="false"/>
 
   <xacro:include filename="$(find denso_robot_moveit_config)/robots/$(arg model)/srdf/denso_robot_macro.srdf.xacro"/>
 
   <!-- left arm -->
-  <xacro:denso_robot_srdf namespace="left_"/>
+  <xacro:denso_robot_srdf namespace="left_" basic_camera="$(arg left_basic_camera)"/>
   <!-- right arm -->
-  <xacro:denso_robot_srdf namespace="right_"/>
+  <xacro:denso_robot_srdf namespace="right_" basic_camera="$(arg right_basic_camera)"/>
 
   <group name="dual_arm">
     <group name="left_arm"/>

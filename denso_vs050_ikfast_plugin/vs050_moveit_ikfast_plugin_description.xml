@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<library path="vs050_moveit_ikfast_plugin">
+  <class name="vs050/IKFastKinematicsPlugin" type="denso_vs050_ikfast::IKFastKinematicsPlugin" base_class_type="kinematics::KinematicsBase">
+    <description>IKFast61 plugin for closed-form kinematics of a prefixed VS050 arm</description>
+  </class>
+</library>

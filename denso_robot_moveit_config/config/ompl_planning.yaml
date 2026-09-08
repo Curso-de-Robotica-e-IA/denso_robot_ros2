@@ -54,6 +54,7 @@ planner_configs:
     type: geometric::PRMstar
 
 arm:
+  default_planner_config: RRTConnectkConfigDefault
   planner_configs:
     - SBLkConfigDefault
     - ESTkConfigDefault
@@ -66,5 +67,21 @@ arm:
     - TRRTkConfigDefault
     - PRMkConfigDefault
     - PRMstarkConfigDefault
-  ##Note: commenting the following line lets moveit chose RRTConnect as default planner rather than LBKPIECE
-  #projection_evaluator: joints(/joint_2,/joint_3)
+
+# The dual-robot SRDF uses left_arm and right_arm, not arm. Keep these
+# configurations explicit so MoveIt does not silently create fallback planners.
+left_arm:
+  default_planner_config: RRTConnectkConfigDefault
+  planner_configs:
+    - RRTConnectkConfigDefault
+    - RRTstarkConfigDefault
+    - TRRTkConfigDefault
+    - PRMstarkConfigDefault
+
+right_arm:
+  default_planner_config: RRTConnectkConfigDefault
+  planner_configs:
+    - RRTConnectkConfigDefault
+    - RRTstarkConfigDefault
+    - TRRTkConfigDefault
+    - PRMstarkConfigDefault

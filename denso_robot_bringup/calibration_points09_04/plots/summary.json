@@ -1,0 +1,13 @@
+{
+  "num_points": 25,
+  "rmse_mm": 0.654754016163857,
+  "mean_mm": 0.5719616330003582,
+  "max_mm": 1.4740117762336957,
+  "max_label": "P5",
+  "plots": [
+    "01_raw_point_clouds_3d.png",
+    "02_transformed_vs_measured_residuals_3d.png",
+    "03_residual_error_height_3d.png",
+    "04_robot_frames_3d.png"
+  ]
+}
