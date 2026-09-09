@@ -5,7 +5,7 @@ left_arm:
   link_prefix: left_
   # Weighted squared travel used to rank analytic branches [J1..J6].
   # Prefer elbow motion over large base and camera-wrist rotations.
-  solution_weights: [4.0, 1.0, 1.0, 4.0, 3.0, 10.0]
+  solution_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
   log_solution_scores: false
   kinematics_solver_search_resolution: 0.005
   kinematics_solver_timeout: 0.05
@@ -13,7 +13,7 @@ left_arm:
 right_arm:
   kinematics_solver: vs050/IKFastKinematicsPlugin
   link_prefix: right_
-  solution_weights: [4.0, 1.0, 1.0, 4.0, 3.0, 10.0]
+  solution_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
   log_solution_scores: false
   kinematics_solver_search_resolution: 0.005
   kinematics_solver_timeout: 0.05

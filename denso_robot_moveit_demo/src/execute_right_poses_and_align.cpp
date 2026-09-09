@@ -266,12 +266,6 @@ int main(int argc, char ** argv)
     }
     const std::string align_command =
       "ros2 run denso_robot_moveit_demo align_tool --ros-args"
-      " -p target_offset_x_m:=0.0"
-      " -p target_offset_y_m:=-0.04"
-      " -p target_offset_z_m:=0.25"
-      " -p target_roll_deg:=-90.0"
-      " -p target_pitch_deg:=90.0"
-      " -p target_yaw_deg:=0.0"
       " -p velocity_scaling:=0.8";
     RCLCPP_INFO(logger, "[%zu/3] Starting align_tool and waiting for it to finish", i + 1);
     const int align_result = std::system(align_command.c_str());
