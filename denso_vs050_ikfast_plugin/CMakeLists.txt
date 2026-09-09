@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.8)
 project(denso_vs050_ikfast_plugin)
 
 if(NOT "${CMAKE_CXX_STANDARD}")
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 17)
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -14,6 +14,7 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2_kdl REQUIRED)
 find_package(tf2_eigen REQUIRED)
+find_package(orocos_kdl REQUIRED)
 find_package(LAPACK REQUIRED)
 
 include_directories(include)
@@ -26,10 +27,9 @@ ament_target_dependencies(${IKFAST_LIBRARY_NAME}
   moveit_core
   pluginlib
   tf2_kdl
-  orocos_kdl
   tf2_eigen
-  LAPACK
 )
+target_link_libraries(${IKFAST_LIBRARY_NAME} ${LAPACK_LIBRARIES})
 # suppress warnings about unused variables in OpenRave's solver code
 target_compile_options(${IKFAST_LIBRARY_NAME} PRIVATE -Wno-unused-variable -Wno-unused-parameter)
 
@@ -48,4 +48,5 @@ ament_export_dependencies(rclcpp)
 ament_export_dependencies(sensor_msgs)
 ament_export_dependencies(tf2_kdl)
 ament_export_dependencies(tf2_eigen)
+ament_export_dependencies(orocos_kdl)
 ament_package()

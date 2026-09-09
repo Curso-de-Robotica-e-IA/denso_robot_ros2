@@ -599,7 +599,7 @@ void IKFastKinematicsPlugin::setSearchDiscretization(const std::map<unsigned int
 
   if (discretization.begin()->second <= 0.0)
   {
-    RCLCPP_ERROR_STREAM(LOGGER, "Discretization can not takes values that are <= 0");
+    RCLCPP_ERROR_STREAM(LOGGER, "Discretization values must be greater than 0");
     return;
   }
 
@@ -1222,7 +1222,7 @@ bool IKFastKinematicsPlugin::getPositionIK(const geometry_msgs::msg::Pose& ik_po
   for (std::size_t i = 0; i < free_params_.size(); ++i)
   {
     int p = free_params_[i];
-    RCLCPP_ERROR(LOGGER, "%u is %f", p, ik_seed_state[p]);  // DTC
+    RCLCPP_DEBUG(LOGGER, "%d is %f", p, ik_seed_state[p]);
     vfree[i] = ik_seed_state[p];
   }
 
@@ -1358,6 +1358,7 @@ bool IKFastKinematicsPlugin::getPositionIK(const std::vector<geometry_msgs::msg:
     // computing all solutions sets for each sampled value of the redundant joint
     if (!sampleRedundantJoint(options.discretization_method, sampled_joint_vals))
     {
+      // MoveIt Humble exposes this enum member with the upstream misspelling.
       result.kinematic_error = kinematics::KinematicErrors::UNSUPORTED_DISCRETIZATION_REQUESTED;
       return false;
     }
