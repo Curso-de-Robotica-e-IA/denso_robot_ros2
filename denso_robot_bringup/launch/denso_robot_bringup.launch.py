@@ -49,6 +49,12 @@ def launch_setup(context, *args, **kwargs):
     xyz = LaunchConfiguration('xyz')
     rpy = LaunchConfiguration('rpy')
 
+    # The analytic solver is generated for the VS050 geometry. Other models
+    # continue to use the shared numerical KDL configuration.
+    kinematics_file = 'config/kinematics.yaml'
+    if model.perform(context) == 'vs050':
+        kinematics_file = 'robots/vs050/config/kinematics.yaml'
+
     moveit_config = (
         MoveItConfigsBuilder('denso_robot')
         .robot_description(
@@ -74,7 +80,7 @@ def launch_setup(context, *args, **kwargs):
                 'namespace': namespace.perform(context)
             }
         )
-        .robot_description_kinematics(file_path='config/kinematics.yaml')
+        .robot_description_kinematics(file_path=kinematics_file)
         .joint_limits(
             file_path=f'robots/{model.perform(context)}/config/joint_limits.yaml'
         )

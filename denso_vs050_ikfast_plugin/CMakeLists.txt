@@ -1,0 +1,52 @@
+cmake_minimum_required(VERSION 3.8)
+project(denso_vs050_ikfast_plugin)
+
+if(NOT "${CMAKE_CXX_STANDARD}")
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+find_package(ament_cmake REQUIRED)
+find_package(moveit_core REQUIRED)
+find_package(pluginlib REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(tf2_kdl REQUIRED)
+find_package(tf2_eigen REQUIRED)
+find_package(orocos_kdl REQUIRED)
+find_package(LAPACK REQUIRED)
+
+include_directories(include)
+
+set(IKFAST_LIBRARY_NAME vs050_moveit_ikfast_plugin)
+add_library(${IKFAST_LIBRARY_NAME} SHARED src/vs050_ikfast_moveit_plugin.cpp)
+ament_target_dependencies(${IKFAST_LIBRARY_NAME}
+  rclcpp
+  sensor_msgs
+  moveit_core
+  pluginlib
+  tf2_kdl
+  tf2_eigen
+)
+target_link_libraries(${IKFAST_LIBRARY_NAME} ${LAPACK_LIBRARIES})
+# suppress warnings about unused variables in OpenRave's solver code
+target_compile_options(${IKFAST_LIBRARY_NAME} PRIVATE -Wno-unused-variable -Wno-unused-parameter)
+
+install(TARGETS ${IKFAST_LIBRARY_NAME}
+  EXPORT export_${PROJECT_NAME}
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin)
+
+pluginlib_export_plugin_description_file(moveit_core vs050_moveit_ikfast_plugin_description.xml)
+
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_export_dependencies(moveit_core)
+ament_export_dependencies(pluginlib)
+ament_export_dependencies(rclcpp)
+ament_export_dependencies(sensor_msgs)
+ament_export_dependencies(tf2_kdl)
+ament_export_dependencies(tf2_eigen)
+ament_export_dependencies(orocos_kdl)
+ament_package()

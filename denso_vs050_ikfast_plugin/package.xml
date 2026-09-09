@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>denso_vs050_ikfast_plugin</name>
+  <version>1.2.0</version>
+  <description>Reusable MoveIt 2 IKFast kinematics plugin for DENSO VS050 arms.</description>
+  <license>BSD</license>
+  <license>Apache-2.0</license>
+  <maintainer email="fa-support@denso-wave.com">DENSO WAVE INCORPORATED</maintainer>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>liblapack-dev</depend>
+  <depend>moveit_core</depend>
+  <depend>orocos_kdl</depend>
+  <depend>pluginlib</depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>tf2_eigen</depend>
+  <depend>tf2_kdl</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+    <moveit_core plugin="${prefix}/vs050_moveit_ikfast_plugin_description.xml"/>
+  </export>
+</package>
