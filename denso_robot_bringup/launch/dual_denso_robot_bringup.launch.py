@@ -23,6 +23,7 @@ from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchD
 from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 from typing import Text
 from launch.launch_context import LaunchContext
@@ -175,12 +176,12 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             'left_basic_camera', default_value='true',
-            description='Add basic_camera in left J6'
+            description='Attach the touch tool with RealSense D405 to left J6'
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
             'right_basic_camera', default_value='false',
-            description='Add basic_camera in right J6'
+            description='Attach the touch tool with RealSense D405 to right J6'
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
@@ -313,7 +314,7 @@ def generate_launch_description():
             'right_xyz:="', right_xyz, '" ',
             'right_rpy:="', right_rpy, '" '
         ])
-    robot_description = {'robot_description': robot_description_content}
+    robot_description = {'robot_description': ParameterValue(robot_description_content, value_type=str)}
 
 # --------- MoveIt Configuration ---------
 
@@ -328,7 +329,7 @@ def generate_launch_description():
             'left_basic_camera:=', left_basic_camera, ' ',
             'right_basic_camera:=', right_basic_camera, ' '
         ])
-    robot_description_semantic = {'robot_description_semantic': robot_description_semantic_content}
+    robot_description_semantic = {'robot_description_semantic': ParameterValue(robot_description_semantic_content, value_type=str)}
     kinematics_yaml = load_yaml('denso_robot_moveit_config', 'config/dual_kinematics.yaml')
     robot_description_kinematics = {'robot_description_kinematics': kinematics_yaml}
 
@@ -495,6 +496,13 @@ def generate_launch_description():
         condition=IfCondition(sim)
     )
 
+    clock_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=['/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock'],
+        output='screen',
+        condition=IfCondition(sim))
+
     spawn_entity = Node(
         package='ros_gz_sim',
         executable='create',
@@ -506,7 +514,7 @@ def generate_launch_description():
     left_ros_gz_image_bridge = Node(
         package='ros_gz_image',
         executable='image_bridge',
-        arguments=['/left_basic_camera'], #camera topic name defined in the <topic> tag in the camera's .xacro file
+        arguments=['/left_basic_camera', '/left_basic_camera/depth/image_raw'],
         output='screen',
         condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", left_basic_camera, "' == 'true'"]))
     )
@@ -514,7 +522,29 @@ def generate_launch_description():
     right_ros_gz_image_bridge = Node(
         package='ros_gz_image',
         executable='image_bridge',
-        arguments=['/right_basic_camera'], #camera topic name defined in the <topic> tag in the camera's .xacro file
+        arguments=['/right_basic_camera', '/right_basic_camera/depth/image_raw'],
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", right_basic_camera, "' == 'true'"]))
+    )
+
+    left_ros_gz_camera_info_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=[
+            '/left_basic_camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            '/left_basic_camera/depth/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+        ],
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", left_basic_camera, "' == 'true'"]))
+    )
+
+    right_ros_gz_camera_info_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=[
+            '/right_basic_camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            '/right_basic_camera/depth/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+        ],
         output='screen',
         condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", right_basic_camera, "' == 'true'"]))
     )
@@ -577,9 +607,12 @@ def generate_launch_description():
         move_group_node,
         rviz_node,
         gazebo,
+        clock_bridge,
         spawn_entity,
         left_ros_gz_image_bridge,
+        left_ros_gz_camera_info_bridge,
         right_ros_gz_image_bridge,
+        right_ros_gz_camera_info_bridge,
         robot_state_publisher_node,
         joint_state_broadcaster_spawner,
         left_servo_node,

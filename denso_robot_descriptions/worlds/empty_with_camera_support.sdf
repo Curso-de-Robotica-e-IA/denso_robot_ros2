@@ -23,7 +23,8 @@
     <plugin
       filename="ignition-gazebo-sensors-system"
       name="gz::sim::systems::Sensors">
-      <render_engine>ogre</render_engine>
+      <!-- Ogre2 applies the D405 depth camera's independent fx/fy projection. -->
+      <render_engine>ogre2</render_engine>
     </plugin>
 
     <light type="directional" name="sun">

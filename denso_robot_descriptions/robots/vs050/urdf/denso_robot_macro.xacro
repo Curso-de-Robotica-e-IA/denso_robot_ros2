@@ -73,7 +73,7 @@
       <xacro:include filename="$(find denso_robot_descriptions)/tools/basic_camera/urdf/basic_camera.xacro" />
     </xacro:if>
 
-    <xacro:if value="$(arg calib_tool)">
+    <xacro:if value="${calib_tool and not basic_camera}">
       <xacro:include filename="$(find denso_robot_descriptions)/tools/calibration_tool/urdf/calib.xacro" />
     </xacro:if>
 
@@ -115,14 +115,14 @@
       <xacro:basic_camera namespace="${namespace}" end_effector="J6" />
     </xacro:if>
 
-    <xacro:if value="$(arg calib_tool)">
+    <xacro:if value="${calib_tool and not basic_camera}">
       <xacro:calib
         namespace="${namespace}"
         end_effector="J6"
-        xyz="$(arg calib_xyz)"
-        rpy="$(arg calib_rpy)"
-        mesh_xyz="$(arg calib_mesh_xyz)"
-        mesh_rpy="$(arg calib_mesh_rpy)" />
+        xyz="${calib_xyz}"
+        rpy="${calib_rpy}"
+        mesh_xyz="${calib_mesh_xyz}"
+        mesh_rpy="${calib_mesh_rpy}" />
     </xacro:if>
 
     <xacro:if value="${cellphone_holder}">

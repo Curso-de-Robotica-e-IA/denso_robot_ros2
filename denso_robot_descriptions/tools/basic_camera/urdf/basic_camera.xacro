@@ -1,78 +1,125 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="UTF-8"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Keep the basic_camera launch switch and RGB topic for existing clients.
+       Geometry and nominal D405 optics are documented in ../README.md. -->
+  <xacro:macro name="basic_camera" params="namespace end_effector">
+    <xacro:property name="d405_width" value="1280"/>
+    <xacro:property name="d405_height" value="720"/>
+    <!-- D400 datasheet (August 2025): D405 HD / 16:9 profile. -->
+    <xacro:property name="d405_hfov" value="${radians(84)}"/>
+    <xacro:property name="d405_vfov" value="${radians(58)}"/>
 
-    <!-- here you define the parameters you want your xacro file to receive. -->
-    <xacro:macro name="basic_camera" params="namespace end_effector">
+    <link name="${namespace}toucher_link">
+      <!-- Estimated assembly mass / box inertia, not measured CAD dynamics. -->
+      <inertial>
+        <origin xyz="0 0.0188 0.025"/>
+        <mass value="0.16"/>
+        <inertia ixx="0.0001233" ixy="0" ixz="0"
+                 iyy="0.0000599" iyz="0" izz="0.0001165"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="file:///$(find denso_robot_descriptions)/tools/basic_camera/meshes/toucher_with_realsense.stl"
+                scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="${namespace}toucher_material">
+          <color rgba="0.65 0.65 0.68 1"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="file:///$(find denso_robot_descriptions)/tools/basic_camera/meshes/toucher_with_realsense.stl"
+                scale="0.001 0.001 0.001"/>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="${namespace}toucher_joint" type="fixed">
+      <parent link="${namespace}${end_effector}"/>
+      <child link="${namespace}toucher_link"/>
+      <!-- CAD assembly is mounted 90 degrees counter-clockwise about J6. -->
+      <origin xyz="0 0 0" rpy="0 0 ${pi/2}"/>
+    </joint>
 
-    <!-- if your tool has meshes, define the path to it in geometry tag. -->
-    <!-- see the vs050 robot urdf implementation as an example. -->
-    <material name="${namespace}basic_camera_body_material">
-      <color rgba="0.05 0.16 0.30 1.0"/>
-    </material>
-    <material name="${namespace}basic_camera_view_axis_material">
-      <color rgba="0.0 0.75 1.0 0.55"/>
-    </material>
+    <!-- Keep the existing contact-frame name. Mounting Z=0; tip Z=50 mm. -->
+    <link name="${namespace}calib_link"/>
+    <joint name="${namespace}calib_joint" type="fixed">
+      <parent link="${namespace}toucher_link"/>
+      <child link="${namespace}calib_link"/>
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+    </joint>
 
-    <link name="${namespace}basic_camera_link">
-		<inertial>
-			<mass value="1"/>
-			<inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
-		</inertial>
-		<collision>
-			<geometry>
-				<box size="0.035 0.03 0.025"/> 
-			</geometry>
-		</collision>
-		<visual>
-			<geometry>
-				<box size="0.035 0.03 0.025"/> 
-			</geometry>
-      <material name="${namespace}basic_camera_body_material"/>
-		</visual>
-	</link>
+    <!-- CAD front plate: (0, 38.876915, 27) mm. Nominal left imager:
+         -9 mm along tool X; zero depth is 3.8 mm behind the front plate.
+         Gazebo +X looks along tool +Z. The mounted imager's right/down
+         axes are tool -X/-Y: rotate the sensor roll, not the CAD assembly. -->
+    <link name="${namespace}basic_camera_link"/>
+    <joint name="${namespace}basic_camera_joint" type="fixed">
+      <parent link="${namespace}toucher_link"/>
+      <child link="${namespace}basic_camera_link"/>
+      <origin xyz="-0.009 0.038876915 0.0232" rpy="${-pi/2} ${-pi/2} 0"/>
+    </joint>
+    <link name="${namespace}camera_depth_optical_frame"/>
+    <joint name="${namespace}camera_depth_optical_joint" type="fixed">
+      <parent link="${namespace}basic_camera_link"/>
+      <child link="${namespace}camera_depth_optical_frame"/>
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+    </joint>
+    <!-- D405 color comes from the same left imager as depth. -->
+    <link name="${namespace}camera_color_optical_frame"/>
+    <joint name="${namespace}camera_color_optical_joint" type="fixed">
+      <parent link="${namespace}camera_depth_optical_frame"/>
+      <child link="${namespace}camera_color_optical_frame"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
 
-  <link name="${namespace}basic_camera_view_axis">
-    <visual>
-      <origin rpy="0 1.57079632679 0" xyz="0.13 0 0"/>
-      <geometry>
-        <cylinder length="0.26" radius="0.003"/>
-      </geometry>
-      <material name="${namespace}basic_camera_view_axis_material"/>
-    </visual>
-  </link>
-
-  <joint name="${namespace}basic_camera_view_axis_joint" type="fixed">
-    <parent link="${namespace}basic_camera_link"/>
-    <child link="${namespace}basic_camera_view_axis"/>
-    <origin rpy="0 0 0" xyz="0 0 0"/>
-  </joint>
-
-	<joint name="${namespace}basic_camera_joint" type="fixed">
-        <!-- here you define where your tool will connect. In this case, it's at joint 6. -->
-		<parent link="${namespace}${end_effector}"/> 
-		<child link="${namespace}basic_camera_link"/>
-		<origin rpy="0 ${radians(-90)} 0" xyz="0 0 0.01"/>
-	</joint>
+    <xacro:macro name="d405_sim_sensor" params="sensor_name sensor_type topic optical_frame near far info_topic">
+      <sensor name="${sensor_name}" type="${sensor_type}">
+        <always_on>true</always_on>
+        <update_rate>30</update_rate>
+        <visualize>true</visualize>
+        <topic>${topic}</topic>
+        <gz_frame_id>${optical_frame}</gz_frame_id>
+        <camera>
+          <horizontal_fov>${d405_hfov}</horizontal_fov>
+          <image>
+            <width>${d405_width}</width>
+            <height>${d405_height}</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip><near>${near}</near><far>${far}</far></clip>
+          <!-- Set both focal lengths: aspect ratio alone would change VFOV. -->
+          <lens>
+            <type>gnomonical</type>
+            <intrinsics>
+              <fx>${d405_width / (2 * tan(d405_hfov / 2))}</fx>
+              <fy>${d405_height / (2 * tan(d405_vfov / 2))}</fy>
+              <cx>${d405_width / 2}</cx>
+              <cy>${d405_height / 2}</cy>
+              <s>0</s>
+            </intrinsics>
+            <projection>
+              <p_fx>${d405_width / (2 * tan(d405_hfov / 2))}</p_fx>
+              <p_fy>${d405_height / (2 * tan(d405_vfov / 2))}</p_fy>
+              <p_cx>${d405_width / 2}</p_cx>
+              <p_cy>${d405_height / 2}</p_cy>
+              <tx>0</tx><ty>0</ty>
+            </projection>
+          </lens>
+          <optical_frame_id>${optical_frame}</optical_frame_id>
+          <camera_info_topic>${info_topic}</camera_info_topic>
+        </camera>
+      </sensor>
+    </xacro:macro>
 
     <gazebo reference="${namespace}basic_camera_link">
-      <sensor name="${namespace}basic_camera" type="camera">
-        <camera>
-          <horizontal_fov>2.09439510239</horizontal_fov>
-          <image>
-            <width>640</width>
-            <height>480</height>
-          </image>
-          <clip>
-            <near>0.1</near>
-            <far>100</far>
-          </clip>
-        </camera>
-        <always_on>1</always_on>
-        <!-- Keep simulation and RViz responsive while preserving enough rate for alignment. -->
-        <update_rate>10</update_rate>
-        <visualize>true</visualize>
-        <topic>${namespace}basic_camera</topic>      
-      </sensor>
+      <!-- RGB clipping is for rendering; 7–50 cm is the ideal DEPTH range. -->
+      <xacro:d405_sim_sensor sensor_name="${namespace}basic_camera" sensor_type="camera"
+        topic="${namespace}basic_camera" optical_frame="${namespace}camera_color_optical_frame"
+        near="0.005" far="100" info_topic="${namespace}basic_camera/camera_info"/>
+      <!-- A leaf image topic gives Gazebo DepthCameraSensor its own camera_info directory. -->
+      <xacro:d405_sim_sensor sensor_name="${namespace}d405_depth" sensor_type="depth_camera"
+        topic="${namespace}basic_camera/depth/image_raw" optical_frame="${namespace}camera_depth_optical_frame"
+        near="0.07" far="0.5" info_topic="${namespace}basic_camera/depth/camera_info"/>
     </gazebo>
-    </xacro:macro>
+  </xacro:macro>
 </robot>

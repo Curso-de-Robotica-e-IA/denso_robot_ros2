@@ -39,9 +39,7 @@
     </xacro:if>
 
     <xacro:if value="${basic_camera}">
-	  <disable_collisions link1="${namespace}J6" link2="${namespace}basic_camera_link" reason="Adjacent"/>
-	  <disable_collisions link1="${namespace}J5" link2="${namespace}basic_camera_link" reason="Never"/>
-	  <disable_collisions link1="${namespace}basic_camera_link" link2="${namespace}basic_camera_view_axis" reason="Adjacent"/>
+      <disable_collisions link1="${namespace}J6" link2="${namespace}toucher_link" reason="Adjacent"/>
     </xacro:if>
 
   </xacro:macro>

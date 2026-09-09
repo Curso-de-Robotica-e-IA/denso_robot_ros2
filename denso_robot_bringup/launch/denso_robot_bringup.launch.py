@@ -21,8 +21,9 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchDescription
 from launch.conditions import IfCondition, UnlessCondition
-from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 from typing import Text
 from launch.launch_context import LaunchContext
@@ -167,7 +168,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             'basic_camera', default_value='false',
-            description='Add basic_camera in J6'
+            description='Attach the touch tool with RealSense D405 to J6'
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
@@ -309,7 +310,7 @@ def generate_launch_description():
             'xyz:="', xyz, '" ',
             'rpy:="', rpy, '" '
         ])
-    robot_description = {'robot_description': robot_description_content}
+    robot_description = {'robot_description': ParameterValue(robot_description_content, value_type=str)}
 
 # --------- MoveIt Configuration ---------
 
@@ -325,7 +326,7 @@ def generate_launch_description():
             'calib_mesh_xyz:="', calib_mesh_xyz, '" ',
             'calib_mesh_rpy:="', calib_mesh_rpy, '" '
         ])
-    robot_description_semantic = {'robot_description_semantic': robot_description_semantic_content}
+    robot_description_semantic = {'robot_description_semantic': ParameterValue(robot_description_semantic_content, value_type=str)}
     kinematics_yaml = load_yaml('denso_robot_moveit_config', 'config/kinematics.yaml')
     robot_description_kinematics = {'robot_description_kinematics': kinematics_yaml}
 
@@ -498,9 +499,20 @@ def generate_launch_description():
     ros_gz_image_bridge = Node(
         package='ros_gz_image',
         executable='image_bridge',
-        arguments=['/basic_camera'], #camera topic name defined in the <topic> tag in the camera's .xacro file
+        arguments=[['/', namespace, 'basic_camera'], ['/', namespace, 'basic_camera/depth/image_raw']],
         output='screen',
-        condition=IfCondition(sim and basic_camera)
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", basic_camera, "' == 'true'"]))
+    )
+
+    ros_gz_camera_info_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=[
+            ['/', namespace, 'basic_camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'],
+            ['/', namespace, 'basic_camera/depth/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'],
+        ],
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", basic_camera, "' == 'true'"]))
     )
 
     # Get parameters for the Servo node
@@ -533,6 +545,7 @@ def generate_launch_description():
         gazebo,
         spawn_entity,
         ros_gz_image_bridge,
+        ros_gz_camera_info_bridge,
         robot_state_publisher_node,
         joint_state_broadcaster_spawner,
         servo_node

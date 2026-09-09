@@ -1,11 +1,13 @@
 # Adding Custom Tools to DENSO Robot Descriptions
 
+The `basic_camera` option now loads the [touch tool with RealSense D405](basic_camera/README.md), including its 50 mm TCP and simulated RGB/depth sensors.
+
 ## Quick Start
 
 Build the updated description / bringup packages:
 
 ```bash
-colcon build --packages-select denso_robot_descriptions denso_robot_bringup
+colcon build --packages-select denso_robot_descriptions denso_robot_moveit_config denso_robot_bringup
 source install/setup.bash
 ```
 
