@@ -195,6 +195,31 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
+            'right_virtual_phone', default_value='false',
+            description='Attach a virtual phone with visual and collision geometry to the right holder'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'virtual_phone_width', default_value='0.070',
+            description='Virtual phone width in metres'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'virtual_phone_height', default_value='0.150',
+            description='Virtual phone height in metres'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'virtual_phone_thickness', default_value='0.008',
+            description='Virtual phone body thickness in metres'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'virtual_phone_screen_offset', default_value='0.0',
+            description='Front-glass offset along the holder normal in metres'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
             'cellphone_holder_xyz', default_value='-0.021230953 0 0.05367',
             description='XYZ position of cellphone holder tag plane relative to J6'
         ))
@@ -264,6 +289,11 @@ def generate_launch_description():
     right_basic_camera = LaunchConfiguration('right_basic_camera')
     left_cellphone_holder = LaunchConfiguration('left_cellphone_holder')
     right_cellphone_holder = LaunchConfiguration('right_cellphone_holder')
+    right_virtual_phone = LaunchConfiguration('right_virtual_phone')
+    virtual_phone_width = LaunchConfiguration('virtual_phone_width')
+    virtual_phone_height = LaunchConfiguration('virtual_phone_height')
+    virtual_phone_thickness = LaunchConfiguration('virtual_phone_thickness')
+    virtual_phone_screen_offset = LaunchConfiguration('virtual_phone_screen_offset')
     cellphone_holder_xyz = LaunchConfiguration('cellphone_holder_xyz')
     cellphone_holder_rpy = LaunchConfiguration('cellphone_holder_rpy')
     cellphone_holder_mesh_xyz = LaunchConfiguration('cellphone_holder_mesh_xyz')
@@ -303,6 +333,11 @@ def generate_launch_description():
             'right_basic_camera:=', right_basic_camera, ' ',
             'left_cellphone_holder:=', left_cellphone_holder, ' ',
             'right_cellphone_holder:=', right_cellphone_holder, ' ',
+            'right_virtual_phone:=', right_virtual_phone, ' ',
+            'virtual_phone_width:=', virtual_phone_width, ' ',
+            'virtual_phone_height:=', virtual_phone_height, ' ',
+            'virtual_phone_thickness:=', virtual_phone_thickness, ' ',
+            'virtual_phone_screen_offset:=', virtual_phone_screen_offset, ' ',
             'cellphone_holder_xyz:="', cellphone_holder_xyz, '" ',
             'cellphone_holder_rpy:="', cellphone_holder_rpy, '" ',
             'cellphone_holder_mesh_xyz:="', cellphone_holder_mesh_xyz, '" ',
@@ -549,6 +584,26 @@ def generate_launch_description():
         condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", right_basic_camera, "' == 'true'"]))
     )
 
+    left_calib_contact_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=['/left_calib_contact@ros_gz_interfaces/msg/Contacts[ignition.msgs.Contacts'],
+        output='screen',
+        condition=IfCondition(PythonExpression(
+            ["'", sim, "' == 'true' and '", left_basic_camera,
+             "' == 'true' and '", right_virtual_phone, "' == 'true'"]))
+    )
+
+    virtual_phone_contact_boolean = Node(
+        package='denso_robot_bringup',
+        executable='virtual_phone_contact_bool.py',
+        parameters=[{'use_sim_time': sim}],
+        output='screen',
+        condition=IfCondition(PythonExpression(
+            ["'", sim, "' == 'true' and '", left_basic_camera,
+             "' == 'true' and '", right_virtual_phone, "' == 'true'"]))
+    )
+
     # Get parameters for the Servo node
     servo_yaml = load_yaml('denso_robot_moveit_config', 'config/moveit_servo.yaml')
 
@@ -613,6 +668,8 @@ def generate_launch_description():
         left_ros_gz_camera_info_bridge,
         right_ros_gz_image_bridge,
         right_ros_gz_camera_info_bridge,
+        left_calib_contact_bridge,
+        virtual_phone_contact_boolean,
         robot_state_publisher_node,
         joint_state_broadcaster_spawner,
         left_servo_node,
