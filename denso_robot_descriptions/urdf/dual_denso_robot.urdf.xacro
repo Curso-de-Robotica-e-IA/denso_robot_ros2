@@ -20,6 +20,12 @@
    <xacro:arg name="calib_tool" default="false" />
    <xacro:arg name="left_cellphone_holder" default="false" />
    <xacro:arg name="right_cellphone_holder" default="true" />
+   <xacro:arg name="left_virtual_phone" default="false" />
+   <xacro:arg name="right_virtual_phone" default="false" />
+   <xacro:arg name="virtual_phone_width" default="0.070" />
+   <xacro:arg name="virtual_phone_height" default="0.150" />
+   <xacro:arg name="virtual_phone_thickness" default="0.008" />
+   <xacro:arg name="virtual_phone_screen_offset" default="0.0" />
    <xacro:arg name="cellphone_holder_xyz" default="-0.021230953 0 0.05367" />
    <xacro:arg name="cellphone_holder_rpy" default="0 0 1.57079632679" />
    <xacro:arg name="cellphone_holder_mesh_xyz" default="0 0 0.036991104" />
@@ -55,7 +61,12 @@
      cellphone_holder_mesh_xyz="$(arg cellphone_holder_mesh_xyz)"
      cellphone_holder_mesh_rpy="$(arg cellphone_holder_mesh_rpy)"
      cellphone_holder_mesh_scale="$(arg cellphone_holder_mesh_scale)"
-     cellphone_holder_tag_size="$(arg cellphone_holder_tag_size)" >
+     cellphone_holder_tag_size="$(arg cellphone_holder_tag_size)"
+     virtual_phone="$(arg left_virtual_phone)"
+     virtual_phone_width="$(arg virtual_phone_width)"
+     virtual_phone_height="$(arg virtual_phone_height)"
+     virtual_phone_thickness="$(arg virtual_phone_thickness)"
+     virtual_phone_screen_offset="$(arg virtual_phone_screen_offset)" >
      <origin xyz="$(arg left_xyz)" rpy="$(arg left_rpy)" />
    </xacro:denso_robot>
 
@@ -78,7 +89,12 @@
      cellphone_holder_mesh_xyz="$(arg cellphone_holder_mesh_xyz)"
      cellphone_holder_mesh_rpy="$(arg cellphone_holder_mesh_rpy)"
      cellphone_holder_mesh_scale="$(arg cellphone_holder_mesh_scale)"
-     cellphone_holder_tag_size="$(arg cellphone_holder_tag_size)" >
+     cellphone_holder_tag_size="$(arg cellphone_holder_tag_size)"
+     virtual_phone="$(arg right_virtual_phone)"
+     virtual_phone_width="$(arg virtual_phone_width)"
+     virtual_phone_height="$(arg virtual_phone_height)"
+     virtual_phone_thickness="$(arg virtual_phone_thickness)"
+     virtual_phone_screen_offset="$(arg virtual_phone_screen_offset)" >
      <origin xyz="$(arg right_xyz)" rpy="$(arg right_rpy)" />
    </xacro:denso_robot>
 

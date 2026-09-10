@@ -41,12 +41,27 @@
     </joint>
 
     <!-- Keep the existing contact-frame name. Mounting Z=0; tip Z=50 mm. -->
-    <link name="${namespace}calib_link"/>
+    <link name="${namespace}calib_link">
+      <!-- A small, named collision shape makes contact detection unambiguous.
+           The frame remains the existing physical touch TCP. -->
+      <collision name="${namespace}calib_contact">
+        <geometry><sphere radius="0.0015"/></geometry>
+      </collision>
+    </link>
     <joint name="${namespace}calib_joint" type="fixed">
       <parent link="${namespace}toucher_link"/>
       <child link="${namespace}calib_link"/>
       <origin xyz="0 0 0.05" rpy="0 0 0"/>
     </joint>
+
+    <gazebo reference="${namespace}calib_link">
+      <sensor name="${namespace}calib_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <topic>${namespace}calib_contact</topic>
+        <contact><collision>${namespace}calib_contact</collision></contact>
+      </sensor>
+    </gazebo>
 
     <!-- CAD front plate: (0, 38.876915, 27) mm. Nominal left imager:
          -9 mm along tool X; zero depth is 3.8 mm behind the front plate.

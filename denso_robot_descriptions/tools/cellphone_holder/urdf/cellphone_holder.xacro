@@ -58,7 +58,12 @@
     mesh_rpy:='0 0 1.57079632679'
     mesh_scale:='0.001 0.001 0.001'
     tag_size:=0.031
-    tag_thickness:=0.001">
+    tag_thickness:=0.001
+    virtual_phone:=false
+    virtual_phone_width:=0.070
+    virtual_phone_height:=0.150
+    virtual_phone_thickness:=0.008
+    virtual_phone_screen_offset:=0.0">
 
     <xacro:property name="top_tag_spacing" value="0.0952"/>
     <xacro:property name="bottom_tag_spacing" value="0.0998"/>
@@ -166,5 +171,47 @@
       y="${-side_tag_y_spacing / 2.0}"
       tag_size="${tag_size}"
       tag_thickness="${tag_thickness}" />
+
+    <!-- The holder frame stays as the mechanical reference. The phone grows
+         along +Z, and the screen frame follows its outer contact surface. -->
+    <xacro:if value="${virtual_phone}">
+      <xacro:property name="virtual_phone_glass_thickness" value="0.001"/>
+      <xacro:property name="virtual_phone_body_thickness"
+                      value="${virtual_phone_thickness - virtual_phone_glass_thickness}"/>
+
+      <link name="${namespace}virtual_phone_link">
+        <visual name="phone_body_visual">
+          <origin xyz="0 0 ${virtual_phone_screen_offset + virtual_phone_body_thickness / 2.0}"/>
+          <geometry><box size="${virtual_phone_width} ${virtual_phone_height} ${virtual_phone_body_thickness}"/></geometry>
+          <material name="${namespace}virtual_phone_body_material"><color rgba="0.08 0.10 0.14 1"/></material>
+        </visual>
+        <collision name="${namespace}virtual_phone_body_collision">
+          <origin xyz="0 0 ${virtual_phone_screen_offset + virtual_phone_body_thickness / 2.0}"/>
+          <geometry><box size="${virtual_phone_width} ${virtual_phone_height} ${virtual_phone_body_thickness}"/></geometry>
+        </collision>
+      </link>
+      <joint name="${namespace}virtual_phone_joint" type="fixed">
+        <parent link="${namespace}cellphone_holder_phone_plane_frame"/>
+        <child link="${namespace}virtual_phone_link"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+      </joint>
+      <link name="${namespace}virtual_phone_screen_frame">
+        <visual name="screen_visual">
+          <!-- This link is the physical screen plane. The OBJ/MTL preserves
+               UV mapping in both RViz and Gazebo. -->
+          <origin xyz="0 0 0.00001" rpy="0 0 0"/>
+          <geometry><mesh filename="file://$(find denso_robot_descriptions)/tools/virtual_phone/meshes/phone_screen.obj" scale="${virtual_phone_height * 0.94} ${virtual_phone_height * 0.94} ${virtual_phone_height * 0.94}"/></geometry>
+        </visual>
+        <collision name="${namespace}virtual_phone_screen_collision">
+          <origin xyz="0 0 ${-virtual_phone_glass_thickness / 2.0}"/>
+          <geometry><box size="${virtual_phone_width * 0.94} ${virtual_phone_height * 0.94} ${virtual_phone_glass_thickness}"/></geometry>
+        </collision>
+      </link>
+      <joint name="${namespace}virtual_phone_screen_joint" type="fixed">
+        <parent link="${namespace}virtual_phone_link"/>
+        <child link="${namespace}virtual_phone_screen_frame"/>
+        <origin xyz="0 0 ${virtual_phone_screen_offset + virtual_phone_thickness}" rpy="0 0 0"/>
+      </joint>
+    </xacro:if>
   </xacro:macro>
 </robot>
