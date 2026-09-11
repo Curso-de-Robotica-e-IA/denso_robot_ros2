@@ -161,7 +161,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             'model',
-            choices=['vs050'],
+            choices=['vs050', 'vs060'],
             description='Type/series of used denso robot.'
         )
     )
