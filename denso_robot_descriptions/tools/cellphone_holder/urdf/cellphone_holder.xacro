@@ -181,6 +181,10 @@
           <geometry><box size="${virtual_phone_width} ${virtual_phone_height} ${virtual_phone_thickness}"/></geometry>
           <material name="${namespace}virtual_phone_body_material"><color rgba="0.08 0.10 0.14 1"/></material>
         </visual>
+        <collision name="${namespace}virtual_phone_body_collision">
+          <origin xyz="0 0 ${virtual_phone_screen_offset + virtual_phone_thickness / 2.0}"/>
+          <geometry><box size="${virtual_phone_width} ${virtual_phone_height} ${virtual_phone_thickness}"/></geometry>
+        </collision>
       </link>
       <joint name="${namespace}virtual_phone_joint" type="fixed">
         <parent link="${namespace}cellphone_holder_phone_plane_frame"/>
@@ -193,6 +197,10 @@
           <origin xyz="0 0 0.00001" rpy="0 0 0"/>
           <geometry><mesh filename="file://$(find denso_robot_descriptions)/tools/virtual_phone/meshes/phone_screen.obj" scale="${virtual_phone_height * 0.94} ${virtual_phone_height * 0.94} ${virtual_phone_height * 0.94}"/></geometry>
         </visual>
+        <collision name="${namespace}virtual_phone_screen_collision">
+          <origin xyz="0 0 -0.0005"/>
+          <geometry><box size="${virtual_phone_width * 0.94} ${virtual_phone_height * 0.94} 0.001"/></geometry>
+        </collision>
       </link>
       <joint name="${namespace}virtual_phone_screen_joint" type="fixed">
         <parent link="${namespace}virtual_phone_link"/>
