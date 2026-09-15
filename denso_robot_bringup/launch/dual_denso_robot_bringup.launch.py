@@ -196,7 +196,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             'right_virtual_phone', default_value='false',
-            description='Attach a virtual phone with visual and collision geometry to the right holder'
+            description='Attach a visual virtual phone to the right holder'
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
@@ -584,26 +584,6 @@ def generate_launch_description():
         condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", right_basic_camera, "' == 'true'"]))
     )
 
-    left_calib_contact_bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        arguments=['/left_calib_contact@ros_gz_interfaces/msg/Contacts[ignition.msgs.Contacts'],
-        output='screen',
-        condition=IfCondition(PythonExpression(
-            ["'", sim, "' == 'true' and '", left_basic_camera,
-             "' == 'true' and '", right_virtual_phone, "' == 'true'"]))
-    )
-
-    virtual_phone_contact_boolean = Node(
-        package='denso_robot_bringup',
-        executable='virtual_phone_contact_bool.py',
-        parameters=[{'use_sim_time': sim}],
-        output='screen',
-        condition=IfCondition(PythonExpression(
-            ["'", sim, "' == 'true' and '", left_basic_camera,
-             "' == 'true' and '", right_virtual_phone, "' == 'true'"]))
-    )
-
     # Get parameters for the Servo node
     servo_yaml = load_yaml('denso_robot_moveit_config', 'config/moveit_servo.yaml')
 
@@ -668,8 +648,6 @@ def generate_launch_description():
         left_ros_gz_camera_info_bridge,
         right_ros_gz_image_bridge,
         right_ros_gz_camera_info_bridge,
-        left_calib_contact_bridge,
-        virtual_phone_contact_boolean,
         robot_state_publisher_node,
         joint_state_broadcaster_spawner,
         left_servo_node,
