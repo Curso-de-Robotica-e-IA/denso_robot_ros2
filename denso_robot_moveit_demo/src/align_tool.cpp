@@ -25,8 +25,8 @@ struct Options
 {
   std::string move_group_node = "/move_group";
   std::string planning_group = "left_arm";
-  std::string target_frame = "right_cellphone_holder_phone_plane_frame";
-  std::string camera_frame = "left_basic_camera_link";
+  std::string target_frame = "right_cellphone_holder_tags_frame";
+  std::string camera_frame = "left_camera_depth_optical_frame";
   double distance_m = 0.3;  // Deprecated: kept as default for target_offset_z_m.
   double target_offset_x_m = 0.0;
   double target_offset_y_m = 0.0;

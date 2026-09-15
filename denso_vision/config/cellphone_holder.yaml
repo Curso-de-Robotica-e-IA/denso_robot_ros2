@@ -1,13 +1,16 @@
 cellphone_holder_detector:
   ros__parameters:
-    sim: false
+    image_source: realsense
     image_topic: /basic_camera
+    video_path: ''
+    video_loop: true
+    video_fps: 0.0
     realsense_frame_id: camera_color_optical_frame
     realsense_serial: ''
     realsense_width: 1280
     realsense_height: 720
     realsense_fps: 30
-    holder_frame_id: cellphone_holder_tags_frame
+    holder_frame_id: right_cellphone_holder_tags_frame
     tag_ids: [1, 2, 3, 4]
     tag_size_mm: 21.5
     top_spacing_mm: 95.2

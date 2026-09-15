@@ -33,14 +33,16 @@ class HolderGeometry:
         """Return tag centres in the holder plane frame.
 
         The origin is the layout centre, +X points right, and +Y points from
-        the lower row (IDs 3/4) to the upper row (IDs 1/2).
+        the lower row (IDs 4/3) to the upper row (IDs 1/2). This ID layout
+        matches the physical holder: IDs 1/2 are top-left/top-right and IDs
+        4/3 are bottom-left/bottom-right.
         """
         half_height = self.height / 2.0
         return {
             1: np.array([-self.top_spacing / 2.0, half_height]),
             2: np.array([self.top_spacing / 2.0, half_height]),
-            3: np.array([-self.bottom_spacing / 2.0, -half_height]),
-            4: np.array([self.bottom_spacing / 2.0, -half_height]),
+            3: np.array([self.bottom_spacing / 2.0, -half_height]),
+            4: np.array([-self.bottom_spacing / 2.0, -half_height]),
         }
 
     def tag_corners(self) -> Dict[int, np.ndarray]:
@@ -61,6 +63,27 @@ class HolderGeometry:
         """Return all 16 plane points, ordered by ID then TL, TR, BR, BL."""
         corners = self.tag_corners()
         return np.concatenate([corners[tag_id] for tag_id in (1, 2, 3, 4)])
+
+    def detector_corners(self) -> Dict[int, np.ndarray]:
+        """Return physical corners in OpenCV's detected-corner order.
+
+        The physical labels have different rotations on the holder. OpenCV
+        preserves each marker's local corner order, so the corresponding
+        physical corners must be reordered before fitting one homography to
+        all sixteen points. The mapping was validated against the recorded
+        D405 footage with all four tags visible.
+        """
+        corners = self.tag_corners()
+        orders = {
+            1: [3, 0, 1, 2],
+            2: [1, 2, 3, 0],
+            3: [3, 0, 1, 2],
+            4: [3, 0, 1, 2],
+        }
+        return {
+            tag_id: corners[tag_id][orders[tag_id]]
+            for tag_id in (1, 2, 3, 4)
+        }
 
 
 def transform_pixel(homography: np.ndarray, pixel: np.ndarray) -> np.ndarray:

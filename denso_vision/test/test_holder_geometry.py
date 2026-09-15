@@ -14,8 +14,8 @@ def test_measured_trapezoid_geometry():
     assert geometry.height == pytest.approx(0.2074872534)
     assert np.linalg.norm(centres[2] - centres[1]) == pytest.approx(0.0952)
     assert np.linalg.norm(centres[4] - centres[3]) == pytest.approx(0.0998)
-    assert np.linalg.norm(centres[3] - centres[1]) == pytest.approx(0.2075)
-    assert np.linalg.norm(centres[4] - centres[2]) == pytest.approx(0.2075)
+    assert np.linalg.norm(centres[4] - centres[1]) == pytest.approx(0.2075)
+    assert np.linalg.norm(centres[3] - centres[2]) == pytest.approx(0.2075)
 
 
 def test_corner_order_and_marker_size():
@@ -26,6 +26,19 @@ def test_corner_order_and_marker_size():
     assert np.linalg.norm(corners[1] - corners[0]) == pytest.approx(0.0215)
     assert np.linalg.norm(corners[2] - corners[1]) == pytest.approx(0.0215)
     assert geometry.all_corners().shape == (16, 2)
+
+
+def test_physical_tag_layout_and_detected_corner_order():
+    """The physical lower-row IDs and label rotations match the holder."""
+    geometry = HolderGeometry()
+    centres = geometry.tag_centres()
+    raw_corners = geometry.tag_corners()
+    detector_corners = geometry.detector_corners()
+
+    assert centres[4][0] < 0.0
+    assert centres[3][0] > 0.0
+    np.testing.assert_allclose(detector_corners[1][0], raw_corners[1][3])
+    np.testing.assert_allclose(detector_corners[2][0], raw_corners[2][1])
 
 
 def test_transform_pixel():

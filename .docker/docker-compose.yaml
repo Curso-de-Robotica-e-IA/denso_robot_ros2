@@ -15,6 +15,7 @@ services:
     command: /bin/bash
     volumes:
       - ../:/root/denso_ws/src
+      - ${VIDEO_DIR:-/home/pcgr/Videos}:/videos:ro
       - /tmp/.X11-unix:/tmp/.X11-unix
       - $XAUTHORITY:/root/.Xauthority
     environment:
@@ -38,6 +39,7 @@ services:
               capabilities: [gpu]
     volumes:
       - ../:/root/denso_ws/src
+      - ${VIDEO_DIR:-/home/pcgr/Videos}:/videos:ro
       - /tmp/.X11-unix:/tmp/.X11-unix
       - $XAUTHORITY:/root/.Xauthority
     environment:

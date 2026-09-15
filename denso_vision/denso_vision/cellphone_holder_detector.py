@@ -24,8 +24,11 @@ class CellphoneHolderDetector(Node):
         """Create subscriptions, publishers, detector, and holder geometry."""
         super().__init__('cellphone_holder_detector')
 
-        self.declare_parameter('sim', False)
+        self.declare_parameter('image_source', 'realsense')
         self.declare_parameter('image_topic', '/basic_camera')
+        self.declare_parameter('video_path', '')
+        self.declare_parameter('video_loop', True)
+        self.declare_parameter('video_fps', 0.0)
         self.declare_parameter(
             'realsense_frame_id', 'camera_color_optical_frame'
         )
@@ -34,7 +37,7 @@ class CellphoneHolderDetector(Node):
         self.declare_parameter('realsense_height', 720)
         self.declare_parameter('realsense_fps', 30)
         self.declare_parameter(
-            'holder_frame_id', 'cellphone_holder_tags_frame'
+            'holder_frame_id', 'right_cellphone_holder_tags_frame'
         )
         self.declare_parameter('tag_ids', [1, 2, 3, 4])
         self.declare_parameter('tag_size_mm', 21.5)
@@ -45,6 +48,8 @@ class CellphoneHolderDetector(Node):
         self.declare_parameter('target_pixel_y', -1.0)
         self.declare_parameter('homography_ransac_threshold_mm', 2.0)
         self.declare_parameter('publish_debug_image', True)
+        self.declare_parameter('detect_colored_dots', True)
+        self.declare_parameter('min_dot_radius_px', 12.0)
 
         self._tag_ids = tuple(
             int(value) for value in self.get_parameter('tag_ids').value
@@ -67,7 +72,7 @@ class CellphoneHolderDetector(Node):
         )
         # Evaluate once at startup so invalid measurements fail clearly.
         _ = self._geometry.height
-        canonical_corners = self._geometry.tag_corners()
+        canonical_corners = self._geometry.detector_corners()
         self._plane_points = np.concatenate([
             canonical_corners[index]
             for index in (1, 2, 3, 4)
@@ -101,17 +106,19 @@ class CellphoneHolderDetector(Node):
         )
         self._publish_debug = self.get_parameter('publish_debug_image').value
         self._pipeline = None
+        self._video_capture = None
+        self._video_timer = None
 
         image_topic = self.get_parameter('image_topic').value
-        self._sim = self.get_parameter('sim').value
-        if self._sim:
+        self._image_source = self.get_parameter('image_source').value
+        if self._image_source == 'topic':
             self.create_subscription(
                 Image,
                 image_topic,
                 self._image_callback,
                 qos_profile_sensor_data,
             )
-        else:
+        elif self._image_source == 'realsense':
             try:
                 import pyrealsense2 as rs
             except ImportError as error:
@@ -135,6 +142,25 @@ class CellphoneHolderDetector(Node):
             )
             self._pipeline.start(realsense_config)
             self.create_timer(1.0 / 30.0, self._realsense_callback)
+        elif self._image_source == 'video':
+            video_path = self.get_parameter('video_path').value
+            if not video_path:
+                raise ValueError('image_source=video requires video_path')
+            self._video_capture = cv2.VideoCapture(video_path)
+            if not self._video_capture.isOpened():
+                raise RuntimeError(f'Could not open video: {video_path}')
+            recorded_fps = self._video_capture.get(cv2.CAP_PROP_FPS)
+            requested_fps = self.get_parameter('video_fps').value
+            playback_fps = requested_fps if requested_fps > 0.0 else recorded_fps
+            if playback_fps <= 0.0:
+                playback_fps = 30.0
+            self._video_timer = self.create_timer(
+                1.0 / playback_fps, self._video_callback
+            )
+        else:
+            raise ValueError(
+                'image_source must be one of: video, topic, realsense'
+            )
         self.create_subscription(
             PointStamped, 'target_pixel', self._target_pixel_callback, 10
         )
@@ -152,8 +178,16 @@ class CellphoneHolderDetector(Node):
             PointStamped, 'target_point', 10
         )
         self._debug_publisher = self.create_publisher(Image, 'debug_image', 10)
+        self._dot_publishers = {
+            color: self.create_publisher(PointStamped, f'dots/{color}', 10)
+            for color in ('red', 'blue', 'green')
+        }
 
-        source = image_topic if self._sim else 'RealSense D405'
+        source = {
+            'topic': image_topic,
+            'realsense': 'RealSense D405',
+            'video': self.get_parameter('video_path').value,
+        }[self._image_source]
         self.get_logger().info(
             f'Looking for AprilTag 36h10 IDs {self._tag_ids} on {source}'
         )
@@ -163,6 +197,9 @@ class CellphoneHolderDetector(Node):
         if self._pipeline is not None:
             self._pipeline.stop()
             self._pipeline = None
+        if self._video_capture is not None:
+            self._video_capture.release()
+            self._video_capture = None
         return super().destroy_node()
 
     def _realsense_callback(self) -> None:
@@ -176,6 +213,24 @@ class CellphoneHolderDetector(Node):
         color_image = np.asanyarray(color_frame.get_data())
         if color_frame.profile.format() == self._rs.format.rgb8:
             color_image = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
+
+        message = Image()
+        message.header.stamp = self.get_clock().now().to_msg()
+        message.header.frame_id = self.get_parameter(
+            'realsense_frame_id'
+        ).value
+        self._process_image(message, color_image)
+
+    def _video_callback(self) -> None:
+        """Read and process one BGR frame from an AVI or other OpenCV video."""
+        ok, color_image = self._video_capture.read()
+        if not ok and self.get_parameter('video_loop').value:
+            self._video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ok, color_image = self._video_capture.read()
+        if not ok:
+            self.get_logger().info('Video finished')
+            self._video_timer.cancel()
+            return
 
         message = Image()
         message.header.stamp = self.get_clock().now().to_msg()
@@ -250,6 +305,28 @@ class CellphoneHolderDetector(Node):
 
         self._process_image(message, color_image)
 
+    def _detect_colored_dots(self, image: np.ndarray) -> Dict[str, np.ndarray]:
+        """Return the centre of the largest visible red, blue, and green dot."""
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        ranges = {
+            'red': ((0, 100, 100), (10, 255, 255), (170, 100, 100), (180, 255, 255)),
+            'blue': ((100, 100, 100), (130, 255, 255)),
+            'green': ((45, 80, 80), (85, 255, 255)),
+        }
+        dots = {}
+        for color, bounds in ranges.items():
+            mask = cv2.inRange(hsv, np.array(bounds[0]), np.array(bounds[1]))
+            if len(bounds) == 4:
+                mask |= cv2.inRange(hsv, np.array(bounds[2]), np.array(bounds[3]))
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if contours:
+                (_, _), radius = cv2.minEnclosingCircle(max(contours, key=cv2.contourArea))
+                if radius >= self.get_parameter('min_dot_radius_px').value:
+                    moment = cv2.moments(max(contours, key=cv2.contourArea))
+                    if moment['m00']:
+                        dots[color] = np.array([moment['m10'] / moment['m00'], moment['m01'] / moment['m00']])
+        return dots
+
     def _process_image(
         self, message: Image, color_image: np.ndarray
     ) -> None:
@@ -275,9 +352,8 @@ class CellphoneHolderDetector(Node):
                 projected = cv2.perspectiveTransform(
                     ordered_points.reshape(1, -1, 2), homography
                 ).reshape(-1, 2)
-                inliers = inlier_mask.ravel().astype(bool)
                 errors = np.linalg.norm(
-                    projected[inliers] - self._plane_points[inliers], axis=1
+                    projected - self._plane_points, axis=1
                 )
                 rmse_mm = 1000.0 * np.sqrt(np.mean(errors ** 2))
                 self._rmse_publisher.publish(Float64(data=float(rmse_mm)))
@@ -295,6 +371,14 @@ class CellphoneHolderDetector(Node):
                 self._publish_target_point(
                     message, homography, target_pixel
                 )
+                if self.get_parameter('detect_colored_dots').value:
+                    for color, pixel in self._detect_colored_dots(color_image).items():
+                        point = PointStamped()
+                        point.header.stamp = message.header.stamp
+                        point.header.frame_id = self._holder_frame_id
+                        point.point.x, point.point.y = map(float, transform_pixel(homography, pixel))
+                        self._dot_publishers[color].publish(point)
+                        cv2.putText(color_image, color, tuple(np.rint(pixel).astype(int)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
                 cv2.drawMarker(
                     color_image,
                     tuple(np.rint(target_pixel).astype(int)),

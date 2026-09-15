@@ -20,8 +20,14 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('namespace', default_value=''),
-        DeclareLaunchArgument('sim', default_value='false'),
+        DeclareLaunchArgument(
+            'image_source', default_value='realsense',
+            description='Image input: video, topic, or realsense',
+        ),
         DeclareLaunchArgument('image_topic', default_value='/basic_camera'),
+        DeclareLaunchArgument('video_path', default_value=''),
+        DeclareLaunchArgument('video_loop', default_value='true'),
+        DeclareLaunchArgument('video_fps', default_value='0.0'),
         DeclareLaunchArgument(
             'realsense_serial',
             default_value=EnvironmentVariable(
@@ -35,10 +41,15 @@ def generate_launch_description():
             namespace=LaunchConfiguration('namespace'),
             output='screen',
             parameters=[config, {
-                'sim': ParameterValue(
-                    LaunchConfiguration('sim'), value_type=bool
-                ),
+                'image_source': LaunchConfiguration('image_source'),
                 'image_topic': LaunchConfiguration('image_topic'),
+                'video_path': LaunchConfiguration('video_path'),
+                'video_loop': ParameterValue(
+                    LaunchConfiguration('video_loop'), value_type=bool
+                ),
+                'video_fps': ParameterValue(
+                    LaunchConfiguration('video_fps'), value_type=float
+                ),
                 'realsense_serial': LaunchConfiguration('realsense_serial'),
             }],
         ),

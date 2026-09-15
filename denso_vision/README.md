@@ -11,7 +11,7 @@ ID 1 -------- 95.2 mm -------- ID 2
   \                                /
    207.5 mm                  207.5 mm
      \                            /
-ID 3 -------- 99.8 mm -------- ID 4
+ID 4 -------- 99.8 mm -------- ID 3
 ```
 
 The resulting row separation is 207.4872534 mm. Each detected tag square is
@@ -36,22 +36,32 @@ source install/setup.bash
 ros2 launch denso_vision cellphone_holder_vision.launch.py
 ```
 
-By default (`sim:=false`) the node reads a connected D405 directly through
-`pyrealsense2` at 1280×720 and 30 FPS, the D405's maximum supported color
-mode. Install it with
+By default (`image_source:=realsense`) the node reads a connected D405 directly
+through `pyrealsense2` at 1280×720 and 30 FPS, the D405's maximum supported
+color mode. Install it with
 `pip install pyrealsense2`. For simulation or rosbag playback, subscribe to a
 ROS image instead:
 
 ```bash
 ros2 launch denso_vision cellphone_holder_vision.launch.py \
-  sim:=true image_topic:=/basic_camera
+  image_source:=topic image_topic:=/basic_camera
 ```
 
 For a namespaced camera, override the image topic. For example:
 
 ```bash
 ros2 launch denso_vision cellphone_holder_vision.launch.py \
-  sim:=true image_topic:=/left_basic_camera
+  image_source:=topic image_topic:=/left_basic_camera
+```
+
+For offline homography validation, replay an AVI directly. The supplied video
+is looped by default and uses its recorded FPS; `video_loop:=false` stops after
+the final frame.
+
+```bash
+ros2 launch denso_vision cellphone_holder_vision.launch.py \
+  image_source:=video \
+  video_path:='/videos/Realsense 14-09-2026/20260914_165123_compact.avi'
 ```
 
 The default target is the centre of each incoming image. Set
@@ -69,7 +79,7 @@ ros2 topic pub --once /target_pixel geometry_msgs/msg/PointStamped \
 | --- | --- | --- |
 | `tag_corners` | `geometry_msgs/msg/PolygonStamped` | 16 image pixels, grouped by IDs 1-4; each group is TL, TR, BR, BL |
 | `homography` | `std_msgs/msg/Float64MultiArray` | Row-major 3x3 transform from image pixels to holder-plane metres |
-| `homography_rmse_mm` | `std_msgs/msg/Float64` | Inlier fit error in millimetres |
+| `homography_rmse_mm` | `std_msgs/msg/Float64` | Fit error over all 16 corners, in millimetres |
 | `target_point` | `geometry_msgs/msg/PointStamped` | Selected pixel expressed as `(x, y, 0)` on the holder plane |
 | `debug_image` | `sensor_msgs/msg/Image` | Detected tags and selected pixel overlay |
 | `target_pixel` | `geometry_msgs/msg/PointStamped` | Runtime input selecting an image `(u, v)` pixel |
