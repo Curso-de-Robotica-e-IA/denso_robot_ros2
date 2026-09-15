@@ -14,7 +14,10 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2_kdl REQUIRED)
 find_package(tf2_eigen REQUIRED)
-find_package(LAPACK REQUIRED)
+# The generated IKFast solver calls the Fortran LAPACK entry points directly.
+# Link by the standard Debian/Ubuntu linker names.  CMake's FindLAPACK and
+# find_library probes can fail when a Conda terminal supplies a restricted
+# CMake search path, despite the system libraries being available to ld.
 
 include_directories(include)
 
@@ -28,7 +31,10 @@ ament_target_dependencies(${IKFAST_LIBRARY_NAME}
   tf2_kdl
   orocos_kdl
   tf2_eigen
-  LAPACK
+)
+target_link_libraries(${IKFAST_LIBRARY_NAME}
+  lapack
+  blas
 )
 # suppress warnings about unused variables in OpenRave's solver code
 target_compile_options(${IKFAST_LIBRARY_NAME} PRIVATE -Wno-unused-variable -Wno-unused-parameter)
