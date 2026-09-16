@@ -18,5 +18,5 @@ cellphone_holder_detector:
     side_spacing_mm: 207.5
     target_pixel_x: -1.0
     target_pixel_y: -1.0
-    homography_ransac_threshold_mm: 2.0
+    homography_ransac_threshold_mm: 4.0
     publish_debug_image: true

@@ -156,7 +156,7 @@ def generate_launch_description():
             description='Start robot with fake hardware mirroring command to its states.'))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'gazebo_args', default_value='-r -v 4',
+            'gazebo_args', default_value='-r -s -v 4',
             description='Arguments passed to Gazebo Sim before the world file.'))
     declared_arguments.append(
         DeclareLaunchArgument('use_servo', default_value='false', description='Launch MoveIt Servo?')

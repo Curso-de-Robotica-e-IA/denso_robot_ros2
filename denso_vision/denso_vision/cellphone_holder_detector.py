@@ -46,7 +46,8 @@ class CellphoneHolderDetector(Node):
         self.declare_parameter('side_spacing_mm', 207.5)
         self.declare_parameter('target_pixel_x', -1.0)
         self.declare_parameter('target_pixel_y', -1.0)
-        self.declare_parameter('homography_ransac_threshold_mm', 2.0)
+        self.declare_parameter('homography_ransac_threshold_mm', 4.0)
+        self.declare_parameter('fallback_binary_threshold', 90)
         self.declare_parameter('publish_debug_image', True)
         self.declare_parameter('detect_colored_dots', True)
         self.declare_parameter('min_dot_radius_px', 12.0)
@@ -309,9 +310,9 @@ class CellphoneHolderDetector(Node):
         """Return the centre of the largest visible red, blue, and green dot."""
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         ranges = {
-            'red': ((0, 100, 100), (10, 255, 255), (170, 100, 100), (180, 255, 255)),
-            'blue': ((100, 100, 100), (130, 255, 255)),
-            'green': ((45, 80, 80), (85, 255, 255)),
+            'red': ((0, 100, 50), (10, 255, 255), (170, 100, 50), (180, 255, 255)),
+            'blue': ((100, 100, 50), (130, 255, 255)),
+            'green': ((45, 80, 50), (85, 255, 255)),
         }
         dots = {}
         for color, bounds in ranges.items():
@@ -335,6 +336,32 @@ class CellphoneHolderDetector(Node):
         corners, ids, _ = self._detect(gray_image)
         ordered_points = self._ordered_detections(corners, ids)
 
+        # Gazebo's lit tag textures can lose the white border contrast needed
+        # by the adaptive detector. Keep the normal path first; use a binary
+        # image only when it did not recover all four known tags.
+        if ordered_points is None:
+            _, binary_image = cv2.threshold(
+                gray_image,
+                self.get_parameter('fallback_binary_threshold').value,
+                255,
+                cv2.THRESH_BINARY,
+            )
+            fallback_corners, fallback_ids, _ = self._detect(binary_image)
+            fallback_points = self._ordered_detections(
+                fallback_corners, fallback_ids
+            )
+            if fallback_points is not None:
+                corners, ids, ordered_points = (
+                    fallback_corners,
+                    fallback_ids,
+                    fallback_points,
+                )
+
+        detected_tag_ids = set() if ids is None else set(ids.flatten())
+        overlay_lines = [
+            f'Tags: {len(detected_tag_ids & set(self._tag_ids))}/4'
+        ]
+
         if ids is not None:
             cv2.aruco.drawDetectedMarkers(color_image, corners, ids)
 
@@ -357,6 +384,7 @@ class CellphoneHolderDetector(Node):
                 )
                 rmse_mm = 1000.0 * np.sqrt(np.mean(errors ** 2))
                 self._rmse_publisher.publish(Float64(data=float(rmse_mm)))
+                overlay_lines.append(f'H RMSE: {rmse_mm:.2f} mm')
 
                 target_pixel = self._requested_pixel
                 if target_pixel is None:
@@ -376,8 +404,13 @@ class CellphoneHolderDetector(Node):
                         point = PointStamped()
                         point.header.stamp = message.header.stamp
                         point.header.frame_id = self._holder_frame_id
-                        point.point.x, point.point.y = map(float, transform_pixel(homography, pixel))
+                        plane_point = transform_pixel(homography, pixel)
+                        point.point.x, point.point.y = map(float, plane_point)
                         self._dot_publishers[color].publish(point)
+                        overlay_lines.append(
+                            f'{color}: {plane_point[0] * 1000:.1f}, '
+                            f'{plane_point[1] * 1000:.1f} mm'
+                        )
                         cv2.putText(color_image, color, tuple(np.rint(pixel).astype(int)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
                 cv2.drawMarker(
                     color_image,
@@ -387,6 +420,17 @@ class CellphoneHolderDetector(Node):
                     24,
                     2,
                 )
+
+        for line_index, line in enumerate(overlay_lines):
+            position = (12, 28 + 24 * line_index)
+            cv2.putText(
+                color_image, line, position, cv2.FONT_HERSHEY_SIMPLEX,
+                0.6, (0, 0, 0), 3,
+            )
+            cv2.putText(
+                color_image, line, position, cv2.FONT_HERSHEY_SIMPLEX,
+                0.6, (255, 255, 255), 1,
+            )
 
         if self._publish_debug:
             debug_message = self._bridge.cv2_to_imgmsg(

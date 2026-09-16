@@ -164,7 +164,7 @@ def generate_launch_description():
             description='Start robot with fake hardware mirroring command to its states.'))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'gazebo_args', default_value='-r -v 4',
+            'gazebo_args', default_value='-r -s -v 4',
             description='Arguments passed to Gazebo Sim before the world file.'))
     declared_arguments.append(
         DeclareLaunchArgument('use_servo', default_value='false', description='Launch MoveIt Servo?')
@@ -245,7 +245,7 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'cellphone_holder_tag_size', default_value='0.031',
+            'cellphone_holder_tag_size', default_value='0.026875',
             description='Visual side length of each cellphone holder AprilTag marker'
         ))
     declared_arguments.append(

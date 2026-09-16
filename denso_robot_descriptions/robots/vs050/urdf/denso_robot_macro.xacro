@@ -31,7 +31,7 @@
     cellphone_holder_mesh_xyz:='0 0 0.036991104'
     cellphone_holder_mesh_rpy:='0 0 1.57079632679'
     cellphone_holder_mesh_scale:='0.001 0.001 0.001'
-    cellphone_holder_tag_size:=0.031
+    cellphone_holder_tag_size:=0.026875
     virtual_phone:=false
     virtual_phone_width:=0.070
     virtual_phone_height:=0.150
