@@ -1,191 +1,222 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 	<xacro:macro name="denso_robot_arm_kinematics" params="namespace model parent *origin">
+
 		<joint name="${namespace}joint_w" type="fixed">
-			<xacro:insert_block name="origin" />
-			<parent link="${parent}"/>
-			<child link="${namespace}base_link"/>
+			<xacro:insert_block name="origin"  />
+			<parent link="${parent}" />
+			<child link="${namespace}base_link" />
 		</joint>
+
 		<link name="${namespace}base_link">
 			<visual>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/base_link.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/base_link.dae" scale="1 1 1" />
 				</geometry>
 			</visual>
 			<collision>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/base_link.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/base_link.dae" scale="1 1 1" />
 				</geometry>
 			</collision>
 			<inertial>
-				<mass value="1"/>
-				<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.000000"/>
-				<inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+				<mass value="10.671" />
+				<origin rpy="0.000000 0.000000 0.000000" xyz="-0.03867582 -0.0001277 0.09016489" />
+				<inertia ixx="2.56206696e-05" ixy="0" ixz="0" iyy="4.04209402e-05" iyz="0" izz="3.52484166e-05" />
 			</inertial>
 		</link>
+
 		<link name="${namespace}J1">
 			<visual>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J1.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J1.dae" scale="1 1 1" />
 				</geometry>
 			</visual>
 			<collision>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J1.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J1.dae" scale="1 1 1" />
 				</geometry>
 			</collision>
 			<inertial>
-				<mass value="1"/>
-				<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.000000"/>
-				<inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+				<mass value="4.955" />
+				<origin rpy="0.000000 0.000000 0.000000" xyz="0.0087579 -0.0012957 0.08320129" />
+				<inertia ixx="2.03430428e-05" ixy="0" ixz="0" iyy="1.43075081e-05" iyz="0" izz="1.33370577e-05" />
 			</inertial>
 		</link>
 		<joint name="${namespace}joint_1" type="revolute">
-			<parent link="${namespace}base_link"/>
-			<child link="${namespace}J1"/>
-			<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.181500"/>
-			<axis xyz="-0.000000 -0.000000 1.000000"/>
-			<limit effort="1000" lower="-2.96705972839036" upper="2.96705972839036" velocity="3.73064127613788"/> <!-- effort value is arbitary for make gazebo simulation runs without gravity problems -->
-			<dynamics damping="0" friction="0"/>
+			<parent link="${namespace}base_link" />
+			<child link="${namespace}J1" />
+			<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.181500" />
+			<axis xyz="-0.000000 -0.000000 1.000000" />
+      		<!-- Initially, a negative effort value acting as a sentinel indicating "no limit" (treated as infinity) was used,
+			but this was changed following the error on line 175 of 
+			https://github.com/gazebosim/gz-physics/blob/ign-physics5/dartsim/src/JointFeatures.cc -->
+			<limit effort="1e6" lower="${radians(-170)}" upper="${radians(170)}" velocity="${radians(425)}" />
+			<dynamics damping="0" friction="0" />
 		</joint>
+
 		<link name="${namespace}J2">
 			<visual>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J2.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J2.dae" scale="1 1 1" />
 				</geometry>
 			</visual>
 			<collision>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J2.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J2.dae" scale="1 1 1" />
 				</geometry>
 			</collision>
 			<inertial>
-				<mass value="1"/>
-				<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.000000"/>
-				<inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+				<mass value="6.184" />
+				<origin rpy="0.000000 0.000000 0.000000" xyz="-0.01386069 -0.00042137 0.08832005" />
+				<inertia ixx="3.54063103e-05" ixy="0" ixz="0" iyy="3.25785729e-05" iyz="0" izz="9.77018345e-06" />
 			</inertial>
 		</link>
 		<joint name="${namespace}joint_2" type="revolute">
-			<parent link="${namespace}J1"/>
-			<child link="${namespace}J2"/>
-			<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.163500"/>
-			<axis xyz="-0.000000 1.000000 -0.000000"/>
-			<limit effort="1000" lower="-2.0943951023932" upper="2.0943951023932" velocity="2.48709418409192"/> <!-- effort value is arbitary for make gazebo simulation runs without gravity problems -->
-			<dynamics damping="0" friction="0"/>
+			<parent link="${namespace}J1" />
+			<child link="${namespace}J2" />
+			<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.163500" />
+			<axis xyz="-0.000000 1.000000 -0.000000" />
+      		<!-- Initially, a negative effort value acting as a sentinel indicating "no limit" (treated as infinity) was used,
+			but this was changed following the error on line 175 of 
+			https://github.com/gazebosim/gz-physics/blob/ign-physics5/dartsim/src/JointFeatures.cc -->
+			<limit effort="1e6" lower="${radians(-120)}" upper="${radians(120)}" velocity="${radians(340)}" />
+			<dynamics damping="0" friction="0" />
 		</joint>
+
 		<link name="${namespace}J3">
 			<visual>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J3.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J3.dae" scale="1 1 1" />
 				</geometry>
 			</visual>
 			<collision>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J3.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J3.dae" scale="1 1 1" />
 				</geometry>
 			</collision>
 			<inertial>
-				<mass value="1"/>
-				<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.000000"/>
-				<inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+				<mass value="2.645" />
+				<origin rpy="0.000000 0.000000 0.000000" xyz="-0.00406821 0.0016604 0.03603942" />
+				<inertia ixx="4.41330319e-06" ixy="0" ixz="0" iyy="4.45791777e-06" iyz="0" izz="2.03895005e-06" />
 			</inertial>
 		</link>
 		<joint name="${namespace}joint_3" type="revolute">
-			<parent link="${namespace}J2"/>
-			<child link="${namespace}J3"/>
-			<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.250000"/>
-			<axis xyz="-0.000000 1.000000 -0.000000"/>
-			<limit effort="1000" lower="-2.18166156499291" upper="2.70526034059121" velocity="2.71540943019156"/> <!-- effort value is arbitary for make gazebo simulation runs without gravity problems -->
-			<dynamics damping="0" friction="0"/>
+			<parent link="${namespace}J2" />
+			<child link="${namespace}J3" />
+			<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.250000" />
+			<axis xyz="-0.000000 1.000000 -0.000000" />
+      		<!-- Initially, a negative effort value acting as a sentinel indicating "no limit" (treated as infinity) was used,
+			but this was changed following the error on line 175 of 
+			https://github.com/gazebosim/gz-physics/blob/ign-physics5/dartsim/src/JointFeatures.cc -->
+			<limit effort="1e6" lower="${radians(-120)}" upper="${radians(151)}" velocity="${radians(385.72)}" />
+			<dynamics damping="0" friction="0" />
 		</joint>
+
 		<link name="${namespace}J4">
 			<visual>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J4.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J4.dae" scale="1 1 1" />
 				</geometry>
 			</visual>
 			<collision>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J4.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J4.dae" scale="1 1 1" />
 				</geometry>
 			</collision>
 			<inertial>
-				<mass value="1"/>
-				<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.000000"/>
-				<inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+				<mass value="1.770" />
+				<origin rpy="0.000000 0.000000 0.000000" xyz="-0.00090245 0.00241103 0.0619847" />
+				<inertia ixx="2.99417953e-06" ixy="0" ixz="0" iyy="2.61053927e-06" iyz="0" izz="1.50605741e-06" />
 			</inertial>
 		</link>
 		<joint name="${namespace}joint_4" type="revolute">
-			<parent link="${namespace}J3"/>
-			<child link="${namespace}J4"/>
-			<origin rpy="0.000000 0.000000 0.000000" xyz="-0.010000 0.000000 0.119500"/>
-			<axis xyz="-0.000000 -0.000000 1.000000"/>
-			<limit effort="1000" lower="-4.71238898038469" upper="4.71238898038469" velocity="3.73064127613788"/> <!-- effort value is arbitary for make gazebo simulation runs without gravity problems -->
-			<dynamics damping="0" friction="0"/>
+			<parent link="${namespace}J3" />
+			<child link="${namespace}J4" />
+			<origin rpy="0.000000 0.000000 0.000000" xyz="-0.010000 0.000000 0.119500" />
+			<axis xyz="-0.000000 -0.000000 1.000000" />
+			<limit effort="6.66" lower="${radians(-270)}" upper="${radians(270)}" velocity="${radians(425)}" />
+			<dynamics damping="0" friction="0" />
 		</joint>
+
 		<link name="${namespace}J5">
 			<visual>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J5.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J5.dae" scale="1 1 1" />
 				</geometry>
 			</visual>
 			<collision>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J5.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J5.dae" scale="1 1 1" />
 				</geometry>
 			</collision>
 			<inertial>
-				<mass value="1"/>
-				<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.000000"/>
-				<inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+				<mass value="0.735" />
+				<origin rpy="0.000000 0.000000 0.000000" xyz="0.00125985 -0.00178539 0.00593704" />
+				<inertia ixx="4.39629328e-07" ixy="0" ixz="0" iyy="5.25922017e-07" iyz="0" izz="2.67062349e-07" />
 			</inertial>
 		</link>
 		<joint name="${namespace}joint_5" type="revolute">
-			<parent link="${namespace}J4"/>
-			<child link="${namespace}J5"/>
-			<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.135500"/>
-			<axis xyz="-0.000000 1.000000 -0.000000"/>
-			<limit effort="1000" lower="-2.0943951023932" upper="2.0943951023932" velocity="2.87060410727889"/> <!-- effort value is arbitary for make gazebo simulation runs without gravity problems -->
-			<dynamics damping="0" friction="0"/>
+			<parent link="${namespace}J4" />
+			<child link="${namespace}J5" />
+			<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.135500" />
+			<axis xyz="-0.000000 1.000000 -0.000000" />
+			<limit effort="6.66" lower="${radians(-120)}" upper="${radians(120)}" velocity="${radians(327.01)}" />
+			<dynamics damping="0" friction="0" />
 		</joint>
+
 		<link name="${namespace}J6">
 			<visual>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J6.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J6.dae" scale="1 1 1" />
 				</geometry>
 			</visual>
 			<collision>
-				<origin rpy="0 0 0" xyz="0 0 0"/>
+				<origin rpy="0 0 0" xyz="0 0 0" />
 				<geometry>
-					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J6.dae" scale="1 1 1"/>
+					<mesh filename="file:///$(find denso_robot_descriptions)/robots/$(arg model)/meshes/J6.dae" scale="1 1 1" />
 				</geometry>
 			</collision>
 			<inertial>
-				<mass value="1"/>
-				<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.000000"/>
-				<inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+				<mass value="0.041" />
+				<origin rpy="0.000000 0.000000 0.000000" xyz="-4.13833459e-07 -7.00967243e-05 -1.06200824e-02" />
+				<inertia ixx="2.96285977e-09" ixy="0" ixz="0" iyy="2.98822098e-09" iyz="0" izz="4.55917832e-09" />
 			</inertial>
 		</link>
 		<joint name="${namespace}joint_6" type="revolute">
-			<parent link="${namespace}J5"/>
-			<child link="${namespace}J6"/>
-			<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.070000"/>
-			<axis xyz="-0.000000 -0.000000 1.000000"/>
-			<limit effort="1000" lower="-6.28318530717959" upper="6.28318530717959" velocity="5.96902604182061"/> <!-- effort value is arbitary for make gazebo simulation runs without gravity problems -->
-			<dynamics damping="0" friction="0"/>
+			<parent link="${namespace}J5" />
+			<child link="${namespace}J6" />
+			<origin rpy="0.000000 0.000000 0.000000" xyz="0.000000 0.000000 0.070000" />
+			<axis xyz="-0.000000 -0.000000 1.000000" />
+			<limit effort="3.13" lower="${radians(-360)}" upper="${radians(360)}" velocity="${radians(680)}" />
+			<dynamics damping="0" friction="0" />
+		</joint>
+
+		<link name="${namespace}flange"/>
+		<joint name="${namespace}J6-flange" type="fixed">
+			<parent link="${namespace}J6"/>
+			<child link="${namespace}flange"/>
+			<origin rpy="0 ${radians(-90)} 0" xyz="0 0 0"/>
+		</joint>
+
+		<link name="${namespace}tool0"/>
+		<joint name="${namespace}J6-tool0" type="fixed">
+			<parent link="${namespace}J6"/>
+			<child link="${namespace}tool0"/>
+			<origin rpy="0 0 0" xyz="0 0 0"/>
 		</joint>
 	</xacro:macro>
 </robot>

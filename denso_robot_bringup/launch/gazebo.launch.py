@@ -29,19 +29,20 @@ from launch.actions import (
 
 def launch_setup(context, *args, **kwargs):
     model = LaunchConfiguration('model')
-    basic_camera = LaunchConfiguration('basic_camera')
+    gz_cam = LaunchConfiguration('gz_cam')
     camera_topics = LaunchConfiguration('camera_topics')
+    gz_world = LaunchConfiguration('gz_world')
     
     
-    world = Path(get_package_share_directory('denso_robot_gazebo')) / 'worlds' / 'empty_with_sensor_support.sdf'
+    world = Path(get_package_share_directory('denso_robot_gazebo')) / 'worlds' / gz_world.perform(context)
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             Path(get_package_share_directory('ros_gz_sim')) / 'launch' / 'gz_sim.launch.py'
         ),
-        launch_arguments={'gz_args': ['-r -v4 ', world]}.items()
+        launch_arguments={'gz_args': ['-r -v1 ', world]}.items()
         # '-r'   == run simulation on start (required for ros2_controllers to connect)
-        # '-v 4' == verbose level 4 (maximum console output)
+        # '-v1' == verbose level 1 (minimum console output)
     )
 
     spawn_entity = Node(
@@ -56,6 +57,13 @@ def launch_setup(context, *args, **kwargs):
         output='screen'
     )
 
+    ros_gz_clock_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
+        output='screen'
+    )
+
     # Bridge Gazebo camera topics to ROS only when a camera is requested
     ros_gz_image_bridge = Node(
         package='ros_gz_image',
@@ -63,10 +71,10 @@ def launch_setup(context, *args, **kwargs):
         # camera_topics is a list of topic names defined in the camera .xacro file
         arguments=camera_topics.perform(context).split(),
         output='screen',
-        condition=IfCondition(basic_camera)
+        condition=IfCondition(gz_cam)
     )
 
-    return [gazebo, spawn_entity, ros_gz_image_bridge]
+    return [gazebo, spawn_entity, ros_gz_clock_bridge, ros_gz_image_bridge]
 
 
 def generate_launch_description():
@@ -82,7 +90,7 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-            'basic_camera',
+            'gz_cam',
             default_value='false',
             description='Enable Gazebo-to-ROS camera image bridge.'
         )
@@ -90,8 +98,15 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             'camera_topics',
-            default_value='/basic_camera',
+            default_value='/gz_cam',
             description='Space-separated list of camera topic names for the image bridge.'
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'gz_world',
+            default_value='empty_with_sensor_support.sdf',
+            description='Name of the Gazebo world file to be loaded.'
         )
     )
 

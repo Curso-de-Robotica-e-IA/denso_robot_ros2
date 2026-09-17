@@ -211,7 +211,7 @@ exit_proc:
 HRESULT
 SafeArrayDestroy(SAFEARRAY *psa)
 {
-  int32_t i;
+  uint32_t i;
 
   if (psa != NULL) {
     if (psa->pvData != NULL) {
@@ -419,7 +419,7 @@ VariantCopy(VARIANT *pvargDest, const VARIANT *pvargSrc)
   VariantClear(pvargDest);
 
   if (pvargSrc->vt & VT_ARRAY) {
-    int32_t i, lLbound = 0;
+    uint32_t i, lLbound = 0;
     uint32_t cbElements = 0, cElements;
 
     lLbound = pvargSrc->parray->rgsabound[0].lLbound;
@@ -736,6 +736,7 @@ HRESULT
 VariantChangeType(VARIANT *pvargDest, VARIANT *pvarSrc, uint16_t wFlags,
     uint16_t vt)
 {
+  (void) wFlags;
   HRESULT hr = S_OK;
 
   if ((pvargDest == NULL) || (pvarSrc == NULL)) {
@@ -857,6 +858,15 @@ VariantChangeType(VARIANT *pvargDest, VARIANT *pvarSrc, uint16_t wFlags,
       return DISP_E_BADVARTYPE; \
   }
 
+  /**
+  * NOTE: -Wtype-limits suppressed here because SubChangeType is a generic
+  * macro reused for signed and unsigned types. GCC statically flags
+  * comparisons like `val < (type)0` as always-false when `type` is
+  * unsigned, but the branch is only taken based on IsUnsigned (resolved
+  * at runtime via pvarSrc->vt). False positive, not a bug.
+  */
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wtype-limits"
   switch (pvarSrc->vt) {
     case VT_EMPTY:
       switch (vt) {
@@ -915,6 +925,7 @@ VariantChangeType(VARIANT *pvargDest, VARIANT *pvarSrc, uint16_t wFlags,
     default:
       return DISP_E_BADVARTYPE;
   }
+  #pragma GCC diagnostic pop
 
   if (SUCCEEDED(hr)) {
     pvargDest->vt = vt;

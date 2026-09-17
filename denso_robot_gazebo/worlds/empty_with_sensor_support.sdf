@@ -1,5 +1,5 @@
-<sdf version="1.6">
-  <world name="empty_with_camera_support">
+<sdf version="1.9">
+  <world name="empty_with_sensor_support">
     <physics name="1ms" type="ignored">
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
@@ -23,7 +23,7 @@
     <plugin
       filename="ignition-gazebo-sensors-system"
       name="gz::sim::systems::Sensors">
-      <render_engine>ogre</render_engine>
+      <render_engine>ogre2</render_engine>
     </plugin>
 
     <light type="directional" name="sun">
@@ -66,6 +66,5 @@
         </visual>
       </link>
     </model>
-
   </world>
 </sdf>

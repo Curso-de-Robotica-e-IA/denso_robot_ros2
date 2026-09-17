@@ -11,7 +11,7 @@ COPY . src/
 
 RUN apt-get update -q && apt-get install -q -y --no-install-recommends \
     ros-$ROS_DISTRO-moveit \
-    ros-$ROS_DISTRO-moveit-servo \  
+    ros-$ROS_DISTRO-moveit-servo \
     ros-$ROS_DISTRO-ros2-control \
     ros-$ROS_DISTRO-ros2-controllers \
     terminator \
@@ -20,7 +20,7 @@ RUN apt-get update -q && apt-get install -q -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 RUN . /opt/ros/$ROS_DISTRO/setup.sh \
-  && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release \
+  && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --executor sequential \
   && echo "source /root/denso_ws/install/setup.bash" >> /root/.bashrc
 
 RUN rm -rf src/*

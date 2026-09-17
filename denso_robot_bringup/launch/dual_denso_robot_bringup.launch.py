@@ -47,7 +47,8 @@ def launch_setup(context, *args, **kwargs):
     controllers_file = LaunchConfiguration('controllers_file')
     left_robot_controller = LaunchConfiguration('left_robot_controller')
     right_robot_controller = LaunchConfiguration('right_robot_controller')
-    basic_camera = LaunchConfiguration('basic_camera')
+    gz_cam = LaunchConfiguration('gz_cam')
+    gz_world = LaunchConfiguration('gz_world')
     left_xyz = LaunchConfiguration('left_xyz')
     right_xyz = LaunchConfiguration('right_xyz')
     left_rpy = LaunchConfiguration('left_rpy')
@@ -67,7 +68,7 @@ def launch_setup(context, *args, **kwargs):
                 'namespace': namespace.perform(context),
                 'verbose': verbose.perform(context),
                 'sim': sim.perform(context),
-                'basic_camera': basic_camera.perform(context),
+                'gz_cam': gz_cam.perform(context),
                 'left_xyz': left_xyz.perform(context),
                 'right_xyz': right_xyz.perform(context),
                 'left_rpy': left_rpy.perform(context),
@@ -85,13 +86,11 @@ def launch_setup(context, *args, **kwargs):
         .joint_limits(
             file_path=f'robots/{model.perform(context)}/config/dual/joint_limits.yaml'
         )
-        .moveit_cpp(file_path='config/moveit_cpp.yaml')
         .trajectory_execution(
             file_path=f'robots/{model.perform(context)}/config/dual/moveit_controllers.yaml'
         )
-        #.planning_scene_monitor()
         .planning_pipelines(pipelines=['ompl'])
-        #.pilz_cartesian_limits()
+        .pilz_cartesian_limits(file_path='config/pilz_cartesian_limits.yaml')
         .to_moveit_configs()
     )
 
@@ -124,7 +123,7 @@ def launch_setup(context, *args, **kwargs):
 
     for controller in controllers:
         nodes_to_start.append(
-            launch_utils.controller_spawner(controller)
+            launch_utils.controller_spawner(controller, sim)
         )
 
     nodes_to_start.append(
@@ -134,10 +133,10 @@ def launch_setup(context, *args, **kwargs):
         launch_utils.rviz(moveit_config, launch_rviz, sim)
     )
     nodes_to_start.append(
-         launch_utils.static_tf('left_base_link')
+         launch_utils.static_tf('left_base_link', sim)
     )
     nodes_to_start.append(
-         launch_utils.static_tf('right_base_link')
+         launch_utils.static_tf('right_base_link', sim)
     )
     nodes_to_start.append(
         launch_utils.robot_state_publisher(moveit_config.robot_description, sim)
@@ -158,9 +157,10 @@ def launch_setup(context, *args, **kwargs):
             ) / 'launch' / 'gazebo.launch.py'
         ),
         launch_arguments={
-            'basic_camera': basic_camera,
+            'gz_cam': gz_cam,
             'model': model,
-            'camera_topics': '/left_basic_camera /right_basic_camera',
+            'camera_topics': '/left_gz_cam /right_gz_cam',
+            'gz_world': gz_world
         }.items(),
         condition=IfCondition(sim)
     )
@@ -300,9 +300,16 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-            'basic_camera',
+            'gz_cam',
             default_value='false',
-            description='Add basic_camera on end-effector'
+            description='Add gz_cam on end-effector'
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'gz_world',
+            default_value='empty_with_sensor_support.sdf',
+            description='Name of the Gazebo world file to be loaded.'
         )
     )
     declared_arguments.append(

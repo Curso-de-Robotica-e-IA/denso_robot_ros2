@@ -202,7 +202,7 @@ typedef int32_t HRESULT;
  * @def   OSERR2HRESULT(err)
  * @brief A macro that returns HREUSLT(0x8091) which means OS error.
  */
-#define OSERR2HRESULT(err) (((err) & 0x0000FFFF) | 0x80910000)
+#define OSERR2HRESULT(err) ((uint32_t)(((err) & 0x0000FFFF) | 0x80910000))
 
 #ifndef __wtypes_h__
 
