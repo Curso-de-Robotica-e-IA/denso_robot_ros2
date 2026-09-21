@@ -19,4 +19,7 @@ cellphone_holder_detector:
     target_pixel_x: -1.0
     target_pixel_y: -1.0
     homography_ransac_threshold_mm: 4.0
+    # Coloured targets must lie in this central physical holder region.
+    dot_roi_half_width_mm: 50.0
+    dot_roi_half_height_mm: 100.0
     publish_debug_image: true

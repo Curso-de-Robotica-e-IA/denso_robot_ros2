@@ -15,7 +15,8 @@ namespace
 
 using JointTarget = std::map<std::string, double>;
 
-const JointTarget kLeftStart{
+// Retain the original pose for Gazebo/simulation.
+const JointTarget kLeftSimulationStart{
   {"left_joint_1", -0.10105070580797723},
   {"left_joint_2", 1.4752485930548636},
   {"left_joint_3", -1.9513752321972542},
@@ -24,13 +25,34 @@ const JointTarget kLeftStart{
   {"left_joint_6", 0.05183980864340618},
 };
 
-const JointTarget kRightStart{
+const JointTarget kRightSimulationStart{
   {"right_joint_1", 0.0},
   {"right_joint_2", 0.0},
   {"right_joint_3", 1.57},
   {"right_joint_4", 0.0},
   {"right_joint_5", 0.0},
   {"right_joint_6", 0.0},
+};
+
+// Measured from /joint_states with both physical robots and the mounted tool
+// in the real collaboration start configuration on 2026-09-17. Keep this
+// independent from Gazebo: the real setup has a different right-arm pose.
+const JointTarget kLeftRealStart{
+  {"left_joint_1", -0.10118400929841607},
+  {"left_joint_2", 1.4750073758643738},
+  {"left_joint_3", -1.9512535367483903},
+  {"left_joint_4", 0.11342110134927567},
+  {"left_joint_5", 2.0434983105402837},
+  {"left_joint_6", 0.05199140259140652},
+};
+
+const JointTarget kRightRealStart{
+  {"right_joint_1", 0.00246695269676765},
+  {"right_joint_2", -0.031657528509989916},
+  {"right_joint_3", 1.5874174590497536},
+  {"right_joint_4", -0.22802864096418166},
+  {"right_joint_5", 0.01094100406012989},
+  {"right_joint_6", 0.22795242129378354},
 };
 
 bool load_descriptions(const rclcpp::Node::SharedPtr & node)
@@ -101,6 +123,7 @@ int main(int argc, char ** argv)
   rclcpp::init(argc, argv);
   auto node = std::make_shared<rclcpp::Node>("move_to_collab_start");
   const bool plan_only = node->declare_parameter<bool>("plan_only", false);
+  const bool sim = node->declare_parameter<bool>("sim", true);
   if (!load_descriptions(node)) {
     RCLCPP_ERROR(node->get_logger(), "Could not load MoveIt descriptions");
     rclcpp::shutdown();
@@ -133,8 +156,14 @@ int main(int argc, char ** argv)
     group->setMaxVelocityScalingFactor(0.15);
     group->setMaxAccelerationScalingFactor(0.15);
   }
-  const bool success = move_to(*right, kRightStart, current, plan_only, node->get_logger()) &&
-    move_to(*left, kLeftStart, current, plan_only, node->get_logger());
+  const JointTarget & right_target = sim ? kRightSimulationStart : kRightRealStart;
+  const JointTarget & left_target = sim ? kLeftSimulationStart : kLeftRealStart;
+  RCLCPP_INFO(
+    node->get_logger(), "Using the %s collaboration start pose",
+    sim ? "simulation" : "real-robot");
+  const bool success =
+    move_to(*right, right_target, current, plan_only, node->get_logger()) &&
+    move_to(*left, left_target, current, plan_only, node->get_logger());
   RCLCPP_INFO(node->get_logger(), success ? "Collab start pose reached" : "Collab start pose failed");
   rclcpp::shutdown();
   return success ? 0 : 1;

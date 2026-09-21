@@ -51,6 +51,8 @@ class CellphoneHolderDetector(Node):
         self.declare_parameter('publish_debug_image', True)
         self.declare_parameter('detect_colored_dots', True)
         self.declare_parameter('min_dot_radius_px', 12.0)
+        self.declare_parameter('dot_roi_half_width_mm', 50.0)
+        self.declare_parameter('dot_roi_half_height_mm', 100.0)
 
         self._tag_ids = tuple(
             int(value) for value in self.get_parameter('tag_ids').value
@@ -306,8 +308,10 @@ class CellphoneHolderDetector(Node):
 
         self._process_image(message, color_image)
 
-    def _detect_colored_dots(self, image: np.ndarray) -> Dict[str, np.ndarray]:
-        """Return the centre of the largest visible red, blue, and green dot."""
+    def _detect_colored_dots(
+        self, image: np.ndarray, homography: np.ndarray
+    ) -> Dict[str, np.ndarray]:
+        """Return coloured dots located in the holder's central physical ROI."""
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         ranges = {
             'red': ((0, 100, 50), (10, 255, 255), (170, 100, 50), (180, 255, 255)),
@@ -315,17 +319,37 @@ class CellphoneHolderDetector(Node):
             'green': ((45, 80, 50), (85, 255, 255)),
         }
         dots = {}
+        half_width = (
+            self.get_parameter('dot_roi_half_width_mm').value * 0.001
+        )
+        half_height = (
+            self.get_parameter('dot_roi_half_height_mm').value * 0.001
+        )
         for color, bounds in ranges.items():
             mask = cv2.inRange(hsv, np.array(bounds[0]), np.array(bounds[1]))
             if len(bounds) == 4:
                 mask |= cv2.inRange(hsv, np.array(bounds[2]), np.array(bounds[3]))
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            if contours:
-                (_, _), radius = cv2.minEnclosingCircle(max(contours, key=cv2.contourArea))
-                if radius >= self.get_parameter('min_dot_radius_px').value:
-                    moment = cv2.moments(max(contours, key=cv2.contourArea))
-                    if moment['m00']:
-                        dots[color] = np.array([moment['m10'] / moment['m00'], moment['m01'] / moment['m00']])
+            candidates = []
+            for contour in contours:
+                (_, _), radius = cv2.minEnclosingCircle(contour)
+                if radius < self.get_parameter('min_dot_radius_px').value:
+                    continue
+                moment = cv2.moments(contour)
+                if not moment['m00']:
+                    continue
+                pixel = np.array([
+                    moment['m10'] / moment['m00'],
+                    moment['m01'] / moment['m00'],
+                ])
+                plane_point = transform_pixel(homography, pixel)
+                if (
+                    abs(plane_point[0]) <= half_width
+                    and abs(plane_point[1]) <= half_height
+                ):
+                    candidates.append((cv2.contourArea(contour), pixel))
+            if candidates:
+                dots[color] = max(candidates, key=lambda item: item[0])[1]
         return dots
 
     def _process_image(
@@ -400,7 +424,9 @@ class CellphoneHolderDetector(Node):
                     message, homography, target_pixel
                 )
                 if self.get_parameter('detect_colored_dots').value:
-                    for color, pixel in self._detect_colored_dots(color_image).items():
+                    for color, pixel in self._detect_colored_dots(
+                        color_image, homography
+                    ).items():
                         point = PointStamped()
                         point.header.stamp = message.header.stamp
                         point.header.frame_id = self._holder_frame_id

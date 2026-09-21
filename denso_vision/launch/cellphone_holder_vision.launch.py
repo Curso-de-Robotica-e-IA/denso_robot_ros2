@@ -8,6 +8,7 @@ from launch.actions import DeclareLaunchArgument
 from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -50,7 +51,11 @@ def generate_launch_description():
                 'video_fps': ParameterValue(
                     LaunchConfiguration('video_fps'), value_type=float
                 ),
-                'realsense_serial': LaunchConfiguration('realsense_serial'),
+                # Serial numbers containing only digits would otherwise be
+                # inferred as integers by ROS parameter parsing.
+                'realsense_serial': ParameterValue(
+                    LaunchConfiguration('realsense_serial'), value_type=str
+                ),
             }],
         ),
     ])

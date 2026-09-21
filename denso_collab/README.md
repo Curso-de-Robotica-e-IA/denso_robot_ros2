@@ -1,9 +1,15 @@
 # DENSO cellphone collaboration
 
-Move both robots to the saved collaboration start pose:
+Move both robots to the saved collaboration start pose. The default is the
+original Gazebo pose. Select the separately recorded physical-robot pose with
+`sim:=false`:
 
 ```bash
 ros2 run denso_collab move_to_collab_start
+
+# First validate the real-robot plan without executing it.
+ros2 run denso_collab move_to_collab_start --ros-args \
+  -p sim:=false -p plan_only:=true
 ```
 
 Runs vision, then moves `left_calib_link` to red, green, and blue at a fixed
