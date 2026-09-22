@@ -9,6 +9,11 @@ This Docker environment allows you to run the DENSO robot ROS 2 stack with ROS 2
 - [Docker Engine and Docker Compose](https://docs.docker.com/engine/install/)
 - For NVIDIA GPU support: [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) and an NVIDIA GPU with up-to-date drivers
 
+> **NOTE**: Always run the following command on the host before using the container (to allow graphical applications like RViz2 and Gazebo to display correctly):
+```bash
+xhost +local:root
+```
+
 ## Building and Starting the Container
 
 ```bash
