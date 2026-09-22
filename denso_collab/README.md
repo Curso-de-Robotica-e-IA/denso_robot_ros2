@@ -15,6 +15,38 @@ Align the D405 to the holder with:
 ros2 run denso_collab align_tool
 ```
 
+To collect a candidate holder pose, move only the right robot in RViz (or on
+the real cell) and capture its current six joints:
+
+```bash
+ros2 run denso_collab record_right_pose --ros-args -p name:=upper_left
+```
+
+It prints one YAML line. A candidate is retained only after `align_tool` can
+plan to the holder. We will select randomly from that validated set rather
+than generate arbitrary joint values.
+
+The current Gazebo candidates are in `config/right_holder_poses.yaml`.
+
+Move the right robot to one captured pose, then align the left camera:
+
+```bash
+ros2 run denso_collab move_right_to_holder_pose --ros-args \
+  -p target:="[-2.64757900107895e-05, 0.55618170421763813, 1.9349063120042773, -7.6274262268908639e-05, -0.92117201453096742, 9.0075032430075844e-05]"
+ros2 run denso_collab align_tool
+```
+
+Run one random collaboration test:
+
+```bash
+ros2 run denso_collab random_collab_pose
+```
+
+It perturbs one validated right-arm anchor, uses IKFast and FK to build a
+candidate, and plans both robots before executing either plan. The bounded
+offsets, tilts, attempts, validation timeout, and camera distance are in
+`config/cellphone_collab.yaml`.
+
 The normal launch uses the current joint state of both robots. Before each
 red, green, and blue target, it aligns the D405 to the holder's current TF,
 then moves `left_calib_link` to the target at a fixed screen-normal standoff.

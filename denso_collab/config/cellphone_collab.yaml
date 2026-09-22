@@ -5,3 +5,14 @@ move_to_screen_standoff:
     tool_link: left_calib_link
     observation_distance_m: 0.30
     align_before_each_target: true
+
+random_collab_pose:
+  ros__parameters:
+    max_holder_offset_x_m: 0.02
+    max_holder_offset_y_m: 0.02
+    max_holder_offset_z_m: 0.01
+    max_holder_tilt_x_deg: 30.0
+    max_holder_tilt_y_deg: 30.0
+    max_candidate_attempts: 20
+    validation_planning_timeout_sec: 2.0
+    camera_observation_distance_m: 0.25

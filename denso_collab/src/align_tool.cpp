@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <chrono>
-#include <cmath>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include <geometry_msgs/msg/pose.hpp>
 
@@ -18,6 +18,8 @@
 
 #include <moveit/move_group_interface/move_group_interface.h>
 
+#include "denso_collab/alignment_pose.hpp"
+
 namespace
 {
 
@@ -27,10 +29,10 @@ struct Options
   std::string planning_group = "left_arm";
   std::string target_frame = "right_cellphone_holder_tags_frame";
   std::string camera_frame = "left_camera_depth_optical_frame";
-  double distance_m = 0.3;  // Deprecated: kept as default for target_offset_z_m.
+  double distance_m = 0.25;  // Deprecated: kept as default for target_offset_z_m.
   double target_offset_x_m = 0.0;
   double target_offset_y_m = 0.0;
-  double target_offset_z_m = 0.3;
+  double target_offset_z_m = 0.25;
   double planning_time = 8.0;
   int num_planning_attempts = 10;
   double velocity_scaling = 1.0;
@@ -108,38 +110,15 @@ bool load_descriptions_from_move_group(
 
   node->declare_parameter<std::string>("robot_description", robot_desc.string_value);
   node->declare_parameter<std::string>("robot_description_semantic", semantic_desc.string_value);
+  for (const auto & prefix : {std::string("left_"), std::string("right_")}) {
+    const std::string group = prefix == "left_" ? "left_arm" : "right_arm";
+    const std::string key = "robot_description_kinematics." + group + ".";
+    node->declare_parameter(key + "kinematics_solver", "vs050/IKFastKinematicsPlugin");
+    node->declare_parameter(key + "link_prefix", prefix);
+    node->declare_parameter<std::vector<double>>(
+      key + "solution_weights", {1.0, 1.0, 1.0, 1.0, 1.0, 1.0});
+  }
   return true;
-}
-
-geometry_msgs::msg::Pose build_camera_pose_from_target_tf(
-  const geometry_msgs::msg::TransformStamped & target_tf,
-  const tf2::Vector3 & target_offset_m)
-{
-  constexpr double kPi = 3.14159265358979323846;
-
-  tf2::Quaternion q_target;
-  tf2::fromMsg(target_tf.transform.rotation, q_target);
-  q_target.normalize();
-
-  const tf2::Vector3 p_target_in_planning(
-    target_tf.transform.translation.x,
-    target_tf.transform.translation.y,
-    target_tf.transform.translation.z);
-  const tf2::Transform t_planning_target(q_target, p_target_in_planning);
-
-  tf2::Quaternion q_target_camera;
-  q_target_camera.setRPY(kPi, 0.0, 0.0);
-  q_target_camera.normalize();
-
-  const tf2::Transform t_target_camera(q_target_camera, target_offset_m);
-  const tf2::Transform t_planning_camera = t_planning_target * t_target_camera;
-
-  geometry_msgs::msg::Pose pose;
-  pose.position.x = t_planning_camera.getOrigin().x();
-  pose.position.y = t_planning_camera.getOrigin().y();
-  pose.position.z = t_planning_camera.getOrigin().z();
-  pose.orientation = tf2::toMsg(t_planning_camera.getRotation());
-  return pose;
 }
 
 }  // namespace
@@ -245,7 +224,7 @@ int main(int argc, char ** argv)
       planning_frame.c_str(), options.target_frame.c_str(), ex.what());
     rclcpp::shutdown();
     return 2;
-  } 
+  }
   RCLCPP_INFO(logger, "Target frame '%s' found in planning frame '%s'", options.target_frame.c_str(), planning_frame.c_str());
 
   const tf2::Vector3 target_offset_m(
@@ -253,7 +232,7 @@ int main(int argc, char ** argv)
     options.target_offset_y_m,
     options.target_offset_z_m);
   const geometry_msgs::msg::Pose camera_target_pose =
-    build_camera_pose_from_target_tf(target_in_planning, target_offset_m);
+    denso_collab::camera_pose_from_holder(target_in_planning.transform, target_offset_m);
 
   RCLCPP_INFO(logger, "Planning frame: %s", planning_frame.c_str());
   RCLCPP_INFO(logger, "Planning group: %s", options.planning_group.c_str());
