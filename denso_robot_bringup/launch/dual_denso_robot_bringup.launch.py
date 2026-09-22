@@ -362,7 +362,8 @@ def generate_launch_description():
             'model:=', denso_robot_model, ' ',
             'namespace:=', namespace, ' ',
             'left_basic_camera:=', left_basic_camera, ' ',
-            'right_basic_camera:=', right_basic_camera, ' '
+            'right_basic_camera:=', right_basic_camera, ' ',
+            'right_virtual_phone:=', right_virtual_phone, ' '
         ])
     robot_description_semantic = {'robot_description_semantic': ParameterValue(robot_description_semantic_content, value_type=str)}
     kinematics_yaml = load_yaml('denso_robot_moveit_config', 'config/dual_kinematics.yaml')

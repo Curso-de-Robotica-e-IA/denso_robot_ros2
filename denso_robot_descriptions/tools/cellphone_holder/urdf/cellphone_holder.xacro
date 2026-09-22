@@ -75,6 +75,14 @@
           <color rgba="0.75 0.75 0.70 1.0"/>
         </material>
       </visual>
+      <collision>
+        <origin rpy="${mesh_rpy}" xyz="${mesh_xyz}"/>
+        <geometry>
+          <mesh
+            filename="file://$(find denso_robot_descriptions)/tools/cellphone_holder/meshes/cellphone_holder.stl"
+            scale="${mesh_scale}"/>
+        </geometry>
+      </collision>
     </link>
 
     <joint name="${namespace}cellphone_holder_mount_joint" type="fixed">
