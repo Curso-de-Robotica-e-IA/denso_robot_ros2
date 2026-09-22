@@ -1,4 +1,4 @@
-FROM ros:humble
+FROM osrf/ros:humble-desktop-full
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -15,7 +15,6 @@ RUN apt-get update -q && apt-get install -q -y --no-install-recommends \
     ros-$ROS_DISTRO-ros2-control \
     ros-$ROS_DISTRO-ros2-controllers \
     terminator \
-  && echo 'APT::Install-Recommends "false";' > /etc/apt/apt.conf.d/00norecommends \
   && rosdep install --ignore-src --from-paths src -y -r --rosdistro $ROS_DISTRO \
   && rm -rf /var/lib/apt/lists/*
 
