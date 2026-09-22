@@ -1,0 +1,7 @@
+move_to_screen_standoff:
+  ros__parameters:
+    holder_frame: right_cellphone_holder_tags_frame
+    target_link: left_camera_depth_optical_frame
+    tool_link: left_calib_link
+    observation_distance_m: 0.30
+    align_before_each_target: true

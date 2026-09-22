@@ -83,7 +83,7 @@ bool load_descriptions(const rclcpp::Node::SharedPtr & node)
     node->declare_parameter(key + "kinematics_solver", "vs050/IKFastKinematicsPlugin");
     node->declare_parameter(key + "link_prefix", prefix);
     node->declare_parameter<std::vector<double>>(
-      key + "solution_weights", {4.0, 1.0, 1.0, 4.0, 3.0, 10.0});
+      key + "solution_weights", {1.0, 1.0, 1.0, 1.0, 1.0, 1.0});
   }
   return true;
 }

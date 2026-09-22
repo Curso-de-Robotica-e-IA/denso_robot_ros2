@@ -1,6 +1,7 @@
 #include <array>
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -37,17 +38,26 @@ bool load_descriptions_from_move_group(
   }
 
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  auto request = std::make_shared<rcl_interfaces::srv::GetParameters::Request>();
-  request->names = {"robot_description", "robot_description_semantic"};
-  auto future = client->async_send_request(request);
-  if (rclcpp::spin_until_future_complete(node, future, std::chrono::seconds(10)) !=
-    rclcpp::FutureReturnCode::SUCCESS)
-  {
+  std::shared_ptr<rcl_interfaces::srv::GetParameters::Response> response;
+  for (int attempt = 1; attempt <= 3; ++attempt) {
+    auto request = std::make_shared<rcl_interfaces::srv::GetParameters::Request>();
+    request->names = {"robot_description", "robot_description_semantic"};
+    auto future = client->async_send_request(request);
+    if (rclcpp::spin_until_future_complete(node, future, std::chrono::seconds(10)) ==
+      rclcpp::FutureReturnCode::SUCCESS)
+    {
+      response = future.get();
+      break;
+    }
+    client->remove_pending_request(future);
+    RCLCPP_WARN(node->get_logger(), "move_group description request %d/3 timed out", attempt);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+  if (!response) {
     RCLCPP_ERROR(node->get_logger(), "Could not load robot descriptions from %s", move_group_node.c_str());
     return false;
   }
 
-  const auto response = future.get();
   if (response->values.size() != 2 ||
     response->values[0].type != rclcpp::PARAMETER_STRING ||
     response->values[1].type != rclcpp::PARAMETER_STRING ||
@@ -65,7 +75,7 @@ bool load_descriptions_from_move_group(
     node->declare_parameter(key + "kinematics_solver", "vs050/IKFastKinematicsPlugin");
     node->declare_parameter(key + "link_prefix", prefix);
     node->declare_parameter<std::vector<double>>(
-      key + "solution_weights", {4.0, 1.0, 1.0, 4.0, 3.0, 10.0});
+      key + "solution_weights", {1.0, 1.0, 1.0, 1.0, 1.0, 1.0});
     node->declare_parameter(key + "kinematics_solver_search_resolution", 0.005);
     node->declare_parameter(key + "kinematics_solver_timeout", 0.05);
     node->declare_parameter(key + "kinematics_solver_attempts", 1);
@@ -81,9 +91,12 @@ public:
   {
     move_group_node_ = declare_parameter<std::string>("move_group_node", "/move_group");
     planning_group_ = declare_parameter<std::string>("planning_group", "left_arm");
-    end_effector_link_ = declare_parameter<std::string>("end_effector_link", "left_calib_link");
+    end_effector_link_ = declare_parameter<std::string>("tool_link", "left_calib_link");
     target_link_ = declare_parameter<std::string>("target_link", "left_camera_depth_optical_frame");
+    holder_frame_ = declare_parameter<std::string>("holder_frame", "right_cellphone_holder_tags_frame");
     standoff_m_ = declare_parameter<double>("standoff_m", 0.1);
+    observation_distance_m_ = declare_parameter<double>("observation_distance_m", 0.3);
+    align_before_each_target_ = declare_parameter<bool>("align_before_each_target", true);
     planning_time_ = declare_parameter<double>("planning_time", 8.0);
     attempts_ = declare_parameter<int>("num_planning_attempts", 10);
     velocity_ = declare_parameter<double>("velocity_scaling", 0.1);
@@ -102,6 +115,10 @@ public:
     move_group_->setNumPlanningAttempts(attempts_);
     move_group_->setMaxVelocityScalingFactor(velocity_);
     move_group_->setMaxAccelerationScalingFactor(acceleration_);
+    constexpr double kPi = 3.14159265358979323846;
+    target_orientation_.setRPY(
+      kPi, 0.0, 0.0);
+    target_orientation_.normalize();
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(get_clock());
     tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
     goal_publisher_ = create_publisher<geometry_msgs::msg::PoseStamped>(
@@ -140,13 +157,21 @@ private:
     }
     planned_joints_ = initial_joints_;
     ready_ = true;
-    RCLCPP_INFO(get_logger(), "Received current robot state; waiting for colored dots");
+    if (!align_before_each_target_) {
+      aligned_ = true;
+      RCLCPP_INFO(get_logger(), "Received current robot state; waiting for colored dots");
+      return;
+    }
+    if (align_to_holder()) {
+      aligned_ = true;
+      RCLCPP_INFO(get_logger(), "Camera aligned; waiting for colored dots");
+    }
   }
 
   void receive_target(
     std::size_t index, const geometry_msgs::msg::PointStamped::SharedPtr point)
   {
-    if (!ready_ || started_) {
+    if (!ready_ || !aligned_ || started_) {
       return;
     }
     targets_[index] = *point;
@@ -171,8 +196,12 @@ private:
   bool plan_and_execute()
   {
     moveit_msgs::msg::RobotState start_state;
-    start_state.joint_state.name = active_joints_;
-    start_state.joint_state.position = planned_joints_;
+    for (const auto & [joint, position] : current_joints_) {
+      start_state.joint_state.name.push_back(joint);
+      const auto active = std::find(active_joints_.begin(), active_joints_.end(), joint);
+      start_state.joint_state.position.push_back(
+        active == active_joints_.end() ? position : planned_joints_[active - active_joints_.begin()]);
+    }
     move_group_->setStartState(start_state);
     moveit::planning_interface::MoveGroupInterface::Plan plan;
     if (move_group_->plan(plan) != moveit::core::MoveItErrorCode::SUCCESS) {
@@ -216,18 +245,6 @@ private:
     }
     tf2::Transform calib_target;
     tf2::fromMsg(calib_to_target.transform, calib_target);
-    if (!have_target_orientation_) {
-      try {
-        const auto holder_target = tf_buffer_->lookupTransform(
-          calib_pose.header.frame_id, target_link_, tf2::TimePointZero,
-          tf2::durationFromSec(2.0));
-        tf2::fromMsg(holder_target.transform.rotation, target_orientation_);
-        have_target_orientation_ = true;
-      } catch (const tf2::TransformException & error) {
-        RCLCPP_ERROR(get_logger(), "Cannot read the aligned camera orientation: %s", error.what());
-        return false;
-      }
-    }
     tf2::Transform holder_calib(
       target_orientation_ * calib_target.inverse().getRotation(),
       tf2::Vector3(
@@ -256,6 +273,22 @@ private:
     return plan_and_execute();
   }
 
+  bool align_to_holder()
+  {
+    geometry_msgs::msg::Pose pose;
+    pose.position.z = observation_distance_m_;
+    pose.orientation = tf2::toMsg(target_orientation_);
+    move_group_->setPoseReferenceFrame(holder_frame_);
+    if (!move_group_->setPoseTarget(pose, target_link_)) {
+      RCLCPP_ERROR(get_logger(), "MoveIt rejected the holder alignment pose");
+      return false;
+    }
+    RCLCPP_INFO(
+      get_logger(), "Aligning camera %.0f mm from %s", observation_distance_m_ * 1000.0,
+      holder_frame_.c_str());
+    return plan_and_execute();
+  }
+
   void touch_screen(const std::string & color)
   {
     RCLCPP_INFO(get_logger(), "%s reached; touch_screen is deferred", color.c_str());
@@ -266,6 +299,10 @@ private:
     const std::array<std::string, 3> colors{"red", "green", "blue"};
     bool complete = true;
     for (std::size_t index = 0; index < colors.size(); ++index) {
+      if (index > 0 && align_before_each_target_ && !align_to_holder()) {
+        complete = false;
+        break;
+      }
       if (!move_to(colors[index], *targets_[index])) {
         complete = false;
         break;
@@ -284,15 +321,18 @@ private:
   }
 
   bool ready_{false};
+  bool aligned_{false};
   bool started_{false};
   bool plan_only_{false};
-  bool have_target_orientation_{false};
   tf2::Quaternion target_orientation_;
   std::string move_group_node_;
   std::string planning_group_;
   std::string end_effector_link_;
   std::string target_link_;
+  std::string holder_frame_;
   double standoff_m_;
+  double observation_distance_m_;
+  bool align_before_each_target_;
   double planning_time_;
   int attempts_;
   double velocity_;

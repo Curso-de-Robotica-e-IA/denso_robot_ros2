@@ -1,21 +1,27 @@
 # DENSO cellphone collaboration
 
-Move both robots to the saved collaboration start pose. The default is the
-original Gazebo pose. Select the separately recorded physical-robot pose with
-`sim:=false`:
+`move_to_collab_start` remains a simulation test with saved joint poses. It is
+not part of the normal collaboration launch:
 
 ```bash
 ros2 run denso_collab move_to_collab_start
 
-# First validate the real-robot plan without executing it.
-ros2 run denso_collab move_to_collab_start --ros-args \
-  -p sim:=false -p plan_only:=true
+ros2 run denso_collab move_to_collab_start --ros-args -p plan_only:=true
 ```
 
-Runs vision, then moves `left_calib_link` to red, green, and blue at a fixed
-screen-normal standoff. Each pose uses the homography X/Y directly and keeps
-the calibrated tool orientation. It returns to the joint state at launch after
-blue. `touch_screen()` is deliberately only a placeholder between moves.
+Align the D405 to the holder with:
+
+```bash
+ros2 run denso_collab align_tool
+```
+
+The normal launch uses the current joint state of both robots. Before each
+red, green, and blue target, it aligns the D405 to the holder's current TF,
+then moves `left_calib_link` to the target at a fixed screen-normal standoff.
+It ignores dot detections until the first alignment has completed.
+The holder stays still. Alignment and standoff parameters are in
+`config/cellphone_collab.yaml`. `touch_screen()` is deliberately only a
+placeholder between moves.
 
 ```bash
 ros2 launch denso_collab cellphone_collab.launch.py \

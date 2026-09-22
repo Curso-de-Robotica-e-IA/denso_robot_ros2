@@ -22,6 +22,16 @@ ament_target_dependencies(move_to_screen_standoff
   tf2_geometry_msgs
   tf2_ros)
 
+add_executable(align_tool src/align_tool.cpp)
+ament_target_dependencies(align_tool
+  geometry_msgs
+  moveit_ros_planning_interface
+  rcl_interfaces
+  rclcpp
+  tf2
+  tf2_geometry_msgs
+  tf2_ros)
+
 add_executable(move_to_collab_start src/move_to_collab_start.cpp)
 ament_target_dependencies(move_to_collab_start
   moveit_ros_planning_interface
@@ -29,7 +39,7 @@ ament_target_dependencies(move_to_collab_start
   rclcpp
   sensor_msgs)
 
-install(TARGETS move_to_screen_standoff move_to_collab_start DESTINATION lib/${PROJECT_NAME})
-install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
+install(TARGETS align_tool move_to_screen_standoff move_to_collab_start DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 
 ament_package()
