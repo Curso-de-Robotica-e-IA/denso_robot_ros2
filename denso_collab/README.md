@@ -43,9 +43,11 @@ ros2 run denso_collab random_collab_pose
 ```
 
 It perturbs one validated right-arm anchor, uses IKFast and FK to build a
-candidate, and plans both robots before executing either plan. The bounded
-offsets, tilts, attempts, validation timeout, and camera distance are in
-`config/cellphone_collab.yaml`.
+combined 12-joint candidate, then collision-checks and executes one `dual_arm`
+plan. Set `planning_mode` to `sequential` in `config/cellphone_collab.yaml` to
+plan and execute the right arm followed by the left alignment. The bounded
+offsets, tilts, attempts, validation timeout, and camera distance are also
+configured there.
 
 The normal launch uses the current joint state of both robots. Before each
 red, green, and blue target, it aligns the D405 to the holder's current TF,

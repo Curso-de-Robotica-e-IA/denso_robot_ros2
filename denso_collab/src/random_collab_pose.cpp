@@ -27,6 +27,7 @@ namespace
 
 struct Limits
 {
+  std::string planning_mode;
   double offset_x_m;
   double offset_y_m;
   double offset_z_m;
@@ -89,6 +90,8 @@ Limits load_limits(const rclcpp::Node::SharedPtr & node, const std::string & pat
     throw std::runtime_error("Missing random_collab_pose.ros__parameters");
   }
   Limits limits{
+    node->declare_parameter<std::string>(
+      "planning_mode", values["planning_mode"].as<std::string>()),
     node->declare_parameter("max_holder_offset_x_m", values["max_holder_offset_x_m"].as<double>()),
     node->declare_parameter("max_holder_offset_y_m", values["max_holder_offset_y_m"].as<double>()),
     node->declare_parameter("max_holder_offset_z_m", values["max_holder_offset_z_m"].as<double>()),
@@ -101,7 +104,8 @@ Limits load_limits(const rclcpp::Node::SharedPtr & node, const std::string & pat
       values["validation_planning_timeout_sec"].as<double>()),
     node->declare_parameter(
       "camera_observation_distance_m", values["camera_observation_distance_m"].as<double>())};
-  if (limits.offset_x_m < 0.0 || limits.offset_y_m < 0.0 || limits.offset_z_m < 0.0 ||
+  if (limits.planning_mode != "dual_arm" && limits.planning_mode != "sequential" ||
+    limits.offset_x_m < 0.0 || limits.offset_y_m < 0.0 || limits.offset_z_m < 0.0 ||
     limits.tilt_x_deg < 0.0 || limits.tilt_y_deg < 0.0 || limits.attempts <= 0 ||
     limits.planning_time_sec <= 0.0 || limits.camera_distance_m <= 0.0)
   {
@@ -182,19 +186,29 @@ int main(int argc, char ** argv)
 
   auto right = std::make_shared<moveit::planning_interface::MoveGroupInterface>(node, "right_arm");
   auto left = std::make_shared<moveit::planning_interface::MoveGroupInterface>(node, "left_arm");
+  std::shared_ptr<moveit::planning_interface::MoveGroupInterface> dual;
   for (const auto & group : {right, left}) {
     group->setPlanningTime(limits.planning_time_sec);
     group->setNumPlanningAttempts(1);
     group->setMaxVelocityScalingFactor(1.0);
     group->setMaxAccelerationScalingFactor(1.0);
   }
+  if (limits.planning_mode == "dual_arm") {
+    dual = std::make_shared<moveit::planning_interface::MoveGroupInterface>(node, "dual_arm");
+    dual->setPlanningTime(limits.planning_time_sec);
+    dual->setNumPlanningAttempts(1);
+    dual->setMaxVelocityScalingFactor(1.0);
+    dual->setMaxAccelerationScalingFactor(1.0);
+  }
 
   const auto model = right->getRobotModel();
+  const auto * dual_joints = model->getJointModelGroup("dual_arm");
   const auto * right_joints = model->getJointModelGroup("right_arm");
   const auto * left_joints = model->getJointModelGroup("left_arm");
   constexpr const char * kHolderFrame = "right_cellphone_holder_tags_frame";
   constexpr const char * kCameraFrame = "left_camera_depth_optical_frame";
-  if (!right_joints || !left_joints || !model->hasLinkModel(kHolderFrame) ||
+  if ((limits.planning_mode == "dual_arm" && !dual_joints) ||
+    !right_joints || !left_joints || !model->hasLinkModel(kHolderFrame) ||
     !model->hasLinkModel(kCameraFrame))
   {
     RCLCPP_ERROR(logger, "Required groups or tool links are missing from the robot model");
@@ -252,6 +266,7 @@ int main(int argc, char ** argv)
   const Eigen::Isometry3d anchor_holder = anchor_state.getGlobalLinkTransform(kHolderFrame);
   RCLCPP_INFO(logger, "Selected validated holder anchor: %s", anchor.first.c_str());
 
+  moveit::planning_interface::MoveGroupInterface::Plan dual_plan;
   moveit::planning_interface::MoveGroupInterface::Plan right_plan;
   moveit::planning_interface::MoveGroupInterface::Plan left_plan;
   bool found = false;
@@ -275,35 +290,59 @@ int main(int argc, char ** argv)
       continue;
     }
     candidate.update();
-    if (!candidate.satisfiesBounds(right_joints) || !candidate.satisfiesBounds(left_joints)) {
-      RCLCPP_INFO(logger, "Candidate %d/%d: joint limits failed", attempt, limits.attempts);
-      continue;
-    }
 
     const auto holder = to_transform(candidate.getGlobalLinkTransform(kHolderFrame));
     const auto camera_pose = denso_collab::camera_pose_from_holder(
       holder, tf2::Vector3(0.0, 0.0, limits.camera_distance_m));
-
-    right->setStartState(current);
-    right->setJointValueTarget(candidate);
-    if (right->plan(right_plan) != moveit::core::MoveItErrorCode::SUCCESS) {
-      RCLCPP_INFO(
-        logger, "Candidate %d/%d: right-arm collision-aware plan failed",
-        attempt, limits.attempts);
+    if (!candidate.setFromIK(left_joints, camera_pose, kCameraFrame, 0.05)) {
+      RCLCPP_INFO(logger, "Candidate %d/%d: left-camera IK failed", attempt, limits.attempts);
       continue;
     }
-
-    left->setStartState(candidate);
-    if (!left->setPoseTarget(camera_pose, kCameraFrame) ||
-      left->plan(left_plan) != moveit::core::MoveItErrorCode::SUCCESS)
+    candidate.update();
+    if ((limits.planning_mode == "dual_arm" && !candidate.satisfiesBounds(dual_joints)) ||
+      (limits.planning_mode == "sequential" &&
+      (!candidate.satisfiesBounds(right_joints) || !candidate.satisfiesBounds(left_joints))))
     {
-      left->clearPoseTargets();
-      RCLCPP_INFO(
-        logger, "Candidate %d/%d: left-camera collision-aware plan failed",
-        attempt, limits.attempts);
+      RCLCPP_INFO(logger, "Candidate %d/%d: joint limits failed", attempt, limits.attempts);
       continue;
     }
-    left->clearPoseTargets();
+
+    if (limits.planning_mode == "dual_arm") {
+      dual->setStartState(current);
+      dual->setJointValueTarget(candidate);
+      if (dual->plan(dual_plan) != moveit::core::MoveItErrorCode::SUCCESS) {
+        RCLCPP_INFO(
+          logger, "Candidate %d/%d: dual-arm collision-aware plan failed",
+          attempt, limits.attempts);
+        continue;
+      }
+      if (dual_plan.trajectory_.joint_trajectory.joint_names.size() !=
+        dual_joints->getVariableCount())
+      {
+        RCLCPP_ERROR(logger, "Dual-arm plan does not contain all 12 joints");
+        continue;
+      }
+    } else {
+      right->setStartState(current);
+      right->setJointValueTarget(candidate);
+      if (right->plan(right_plan) != moveit::core::MoveItErrorCode::SUCCESS) {
+        RCLCPP_INFO(
+          logger, "Candidate %d/%d: right-arm collision-aware plan failed",
+          attempt, limits.attempts);
+        continue;
+      }
+      left->setStartState(candidate);
+      if (!left->setPoseTarget(camera_pose, kCameraFrame) ||
+        left->plan(left_plan) != moveit::core::MoveItErrorCode::SUCCESS)
+      {
+        left->clearPoseTargets();
+        RCLCPP_INFO(
+          logger, "Candidate %d/%d: left-camera collision-aware plan failed",
+          attempt, limits.attempts);
+        continue;
+      }
+      left->clearPoseTargets();
+    }
     RCLCPP_INFO(
       logger,
       "Candidate %d/%d valid: offset [%.3f %.3f %.3f] m, tilt [%.2f %.2f] deg",
@@ -321,18 +360,25 @@ int main(int argc, char ** argv)
     return 1;
   }
 
-  RCLCPP_INFO(
-    logger,
-    "Both hypothetical plans succeeded; executing right arm, then left alignment");
-  if (right->execute(right_plan) != moveit::core::MoveItErrorCode::SUCCESS) {
-    RCLCPP_ERROR(logger, "Right-arm execution failed; left arm was not moved");
-    rclcpp::shutdown();
-    return 1;
-  }
-  if (left->execute(left_plan) != moveit::core::MoveItErrorCode::SUCCESS) {
-    RCLCPP_ERROR(logger, "Left-arm alignment execution failed");
-    rclcpp::shutdown();
-    return 1;
+  if (limits.planning_mode == "dual_arm") {
+    RCLCPP_INFO(logger, "Combined hypothetical plan succeeded; executing both arms together");
+    if (dual->execute(dual_plan) != moveit::core::MoveItErrorCode::SUCCESS) {
+      RCLCPP_ERROR(logger, "Dual-arm execution failed");
+      rclcpp::shutdown();
+      return 1;
+    }
+  } else {
+    RCLCPP_INFO(logger, "Both hypothetical plans succeeded; executing right arm, then left alignment");
+    if (right->execute(right_plan) != moveit::core::MoveItErrorCode::SUCCESS) {
+      RCLCPP_ERROR(logger, "Right-arm execution failed; left arm was not moved");
+      rclcpp::shutdown();
+      return 1;
+    }
+    if (left->execute(left_plan) != moveit::core::MoveItErrorCode::SUCCESS) {
+      RCLCPP_ERROR(logger, "Left-arm alignment execution failed");
+      rclcpp::shutdown();
+      return 1;
+    }
   }
 
   RCLCPP_INFO(logger, "One random collaboration pose completed");
