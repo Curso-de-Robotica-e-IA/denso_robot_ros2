@@ -6,6 +6,7 @@ move_to_screen_standoff:
     # Shared with random_collab_pose for its hypothetical camera alignment.
     observation_distance_m: 0.25
     approach_distance_m: 0.03
+    sim_touch_approach_distance_m: 0.015
     align_before_each_target: false
     calibration_offset_x_m: 0.0
     calibration_offset_y_m: 0.0
@@ -13,6 +14,19 @@ move_to_screen_standoff:
     num_planning_attempts: 10
     velocity_scaling: 1.0
     acceleration_scaling: 1.0
+    detection_timeout_sec: 45.0
+    touch_speed_mps: 0.010
+    touch_max_travel_m: 0.035
+    touch_timeout_sec: 30.0
+    max_touch_xy_error_m: 0.005
+
+sim_touch_contact:
+  ros__parameters:
+    tip_frame: left_calib_link
+    screen_frame: right_virtual_phone_screen_frame
+    phone_width_m: 0.070
+    phone_height_m: 0.150
+    contact_gap_m: 0.002
 
 random_collab_pose:
   ros__parameters:

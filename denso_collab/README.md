@@ -15,13 +15,35 @@ robots' current poses. For a connected RealSense, omit the image arguments;
 `image_source:=realsense` is the default. Check camera access separately first:
 random motion happens before the detector opens the camera.
 
+Use `test_runs:=N` (1–100, default 1) for N finite approach tests. With
+`use_random_holder_pose:=true`, each test gets a new random holder pose; without
+it, each test uses the current pose. A failed random move, alignment, detection,
+approach, or return stops the launch. Detection times out after 45 seconds by
+default; edit `detection_timeout_sec` in the YAML if needed.
+
 `approach_plan_only:=true` checks the screen stage without executing its plans.
 It does **not** stop the optional random stage from moving the robots.
 
-The camera aligns with the holder, detects the colored targets, then approaches
-their centers in screen order. The right robot stays still during the screen
-stage. `touch_screen()` is not implemented yet; this is an approach test, not a
-touch test.
+The camera aligns with the holder, detects simultaneous RGB trios, then
+approaches their centers in screen order. The right robot stays still during
+the screen stage. The current Android app source displays one target at a time,
+so its current test screen is not compatible with this trio detector.
+
+Touch is experimental and **off by default**. For simulation, bring up the
+virtual phone with `sim:=true right_virtual_phone:=true use_servo:=true`, then
+run this launch with `sim:=true touch_enabled:=true`. The launch publishes
+`/touch_detected` (`std_msgs/Bool`) from a geometric tip-to-screen check; it
+fails closed if the screen TF is missing. For real hardware, use `sim:=false
+touch_enabled:=true` and have the ESP32 bridge publish the same boolean topic;
+the sensor's hardware protocol is not implemented here. Touch moves at 10 mm/s,
+with a 35 mm travel bound and 30 s timeout, and retracts before the next plan.
+In simulation with touch enabled, the standoff is 15 mm from the holder plane;
+the normal approach remains 30 mm. The simulated phone is another robot link,
+so the bringup selects a 1 mm Servo **self-collision proximity** margin only in
+this configuration; collision checking stays enabled and the real-robot margin
+remains 10 mm. Do not treat the 2 mm geometric signal as a validated
+force/contact sensor or an Android touch event. Confirm a single touch under
+supervision before using `test_runs` with touch enabled.
 
 Edit [cellphone_collab.yaml](config/cellphone_collab.yaml) for observation and
 approach distances, motion limits, planning, and calibration. Edit

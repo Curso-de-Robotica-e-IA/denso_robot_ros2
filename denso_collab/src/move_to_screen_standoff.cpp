@@ -1,8 +1,12 @@
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <cmath>
 #include <functional>
+#include <future>
 #include <memory>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -11,10 +15,14 @@
 
 #include <geometry_msgs/msg/point_stamped.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <rcl_interfaces/srv/get_parameters.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
+#include <std_msgs/msg/bool.hpp>
+#include <std_msgs/msg/int8.hpp>
+#include <std_srvs/srv/trigger.hpp>
 #include <moveit_msgs/msg/robot_state.hpp>
 #include <tf2/LinearMath/Transform.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -103,19 +111,38 @@ public:
     target_link_ = declare_parameter<std::string>("target_link", "left_camera_depth_optical_frame");
     holder_frame_ = declare_parameter<std::string>("holder_frame", "right_cellphone_holder_tags_frame");
     approach_distance_m_ = declare_parameter<double>("approach_distance_m");
+    sim_touch_approach_distance_m_ = declare_parameter<double>("sim_touch_approach_distance_m", 0.015);
+    sim_ = declare_parameter<bool>("sim", false);
     observation_distance_m_ = declare_parameter<double>("observation_distance_m");
     align_before_each_target_ = declare_parameter<bool>("align_before_each_target");
     planning_time_ = declare_parameter<double>("planning_time");
     attempts_ = declare_parameter<int>("num_planning_attempts");
     velocity_ = declare_parameter<double>("velocity_scaling");
     acceleration_ = declare_parameter<double>("acceleration_scaling");
+    detection_timeout_sec_ = declare_parameter<double>("detection_timeout_sec");
+    touch_enabled_ = declare_parameter<bool>("touch_enabled", false);
+    if (sim_ && touch_enabled_) {
+      approach_distance_m_ = sim_touch_approach_distance_m_;
+    }
+    touch_speed_mps_ = declare_parameter<double>("touch_speed_mps", 0.005);
+    touch_max_travel_m_ = declare_parameter<double>("touch_max_travel_m", 0.035);
+    touch_timeout_sec_ = declare_parameter<double>("touch_timeout_sec", 10.0);
+    max_touch_xy_error_m_ = declare_parameter<double>("max_touch_xy_error_m", 0.005);
     if (!std::isfinite(approach_distance_m_) || approach_distance_m_ <= 0.0 ||
       !std::isfinite(observation_distance_m_) || observation_distance_m_ <= 0.0 ||
       !std::isfinite(planning_time_) || planning_time_ <= 0.0 || attempts_ < 1 ||
       !std::isfinite(velocity_) || velocity_ <= 0.0 || velocity_ > 1.0 ||
-      !std::isfinite(acceleration_) || acceleration_ <= 0.0 || acceleration_ > 1.0)
+      !std::isfinite(acceleration_) || acceleration_ <= 0.0 || acceleration_ > 1.0 ||
+      !std::isfinite(detection_timeout_sec_) || detection_timeout_sec_ <= 0.0 ||
+      !std::isfinite(touch_speed_mps_) || touch_speed_mps_ <= 0.0 || touch_speed_mps_ > 0.02 ||
+      !std::isfinite(touch_max_travel_m_) || touch_max_travel_m_ <= 0.0 ||
+      touch_max_travel_m_ > 0.05 || !std::isfinite(touch_timeout_sec_) ||
+      touch_timeout_sec_ <= 0.0 || touch_timeout_sec_ > 30.0 ||
+      !std::isfinite(sim_touch_approach_distance_m_) || sim_touch_approach_distance_m_ <= 0.0 ||
+      !std::isfinite(max_touch_xy_error_m_) || max_touch_xy_error_m_ <= 0.0 ||
+      max_touch_xy_error_m_ > 0.02)
     {
-      throw std::runtime_error("Invalid distance, planning time, attempts, or velocity/acceleration scaling");
+      throw std::runtime_error("Invalid screen approach or touch limit");
     }
     plan_only_ = declare_parameter<bool>("plan_only", false);
     calibration_x_m_ = declare_parameter<double>("calibration_offset_x_m", 0.0);
@@ -147,38 +174,114 @@ public:
     goal_publisher_ = create_publisher<geometry_msgs::msg::PoseStamped>(
       "screen_standoff_goal", 10);
     active_joints_ = move_group_->getActiveJoints();
+    joint_group_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    rclcpp::SubscriptionOptions joint_options;
+    joint_options.callback_group = joint_group_;
     joint_state_subscription_ = create_subscription<sensor_msgs::msg::JointState>(
       "/joint_states", 10,
-      std::bind(&ScreenStandoffMover::receive_joint_state, this, std::placeholders::_1));
+      std::bind(&ScreenStandoffMover::receive_joint_state, this, std::placeholders::_1),
+      joint_options);
+    if (touch_enabled_ && !plan_only_) {
+      touch_group_ = create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+      rclcpp::SubscriptionOptions options;
+      options.callback_group = touch_group_;
+      touch_subscription_ = create_subscription<std_msgs::msg::Bool>(
+        "/touch_detected", 10,
+        [this](const std_msgs::msg::Bool::SharedPtr msg) {
+          touch_detected_.store(msg->data);
+          last_touch_ms_.store(steady_ms());
+        }, options);
+      servo_status_subscription_ = create_subscription<std_msgs::msg::Int8>(
+        "/left_servo_node/status", 10,
+        [this](const std_msgs::msg::Int8::SharedPtr msg) {
+          servo_status_.store(msg->data);
+          last_servo_status_ms_.store(steady_ms());
+        },
+        options);
+      servo_publisher_ = create_publisher<geometry_msgs::msg::TwistStamped>(
+        "/left_servo_node/delta_twist_cmds", 10);
+      servo_start_client_ = create_client<std_srvs::srv::Trigger>(
+        "/left_servo_node/start_servo", rmw_qos_profile_services_default, touch_group_);
+      servo_pause_client_ = create_client<std_srvs::srv::Trigger>(
+        "/left_servo_node/pause_servo", rmw_qos_profile_services_default, touch_group_);
+      servo_unpause_client_ = create_client<std_srvs::srv::Trigger>(
+        "/left_servo_node/unpause_servo", rmw_qos_profile_services_default, touch_group_);
+    }
   }
 
+  bool succeeded() const {return succeeded_;}
+
 private:
+  static int64_t steady_ms()
+  {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now().time_since_epoch()).count();
+  }
+
+  bool set_servo_paused(bool paused)
+  {
+    const auto & client = paused ? servo_pause_client_ : servo_unpause_client_;
+    if (!client->wait_for_service(std::chrono::seconds(2))) {
+      RCLCPP_ERROR(get_logger(), "MoveIt Servo %s service is unavailable",
+        paused ? "pause" : "unpause");
+      return false;
+    }
+    auto future = client->async_send_request(
+      std::make_shared<std_srvs::srv::Trigger::Request>());
+    if (future.wait_for(std::chrono::seconds(2)) != std::future_status::ready ||
+      !future.get()->success)
+    {
+      RCLCPP_ERROR(get_logger(), "MoveIt Servo %s failed", paused ? "pause" : "unpause");
+      return false;
+    }
+    return true;
+  }
+
+  void finish(bool success)
+  {
+    succeeded_ = success;
+    rclcpp::shutdown();
+  }
+
   void receive_joint_state(const sensor_msgs::msg::JointState::SharedPtr state)
   {
-    for (std::size_t index = 0; index < state->name.size() && index < state->position.size(); ++index) {
-      current_joints_[state->name[index]] = state->position[index];
-    }
-    if (ready_) {
-      return;
-    }
-    for (const auto & joint : active_joints_) {
-      if (current_joints_.find(joint) == current_joints_.end()) {
+    {
+      std::lock_guard<std::mutex> lock(joint_mutex_);
+      for (std::size_t index = 0; index < state->name.size() && index < state->position.size(); ++index) {
+        current_joints_[state->name[index]] = state->position[index];
+      }
+      last_joint_ms_.store(steady_ms());
+      if (ready_) {
         return;
       }
+      for (const auto & joint : active_joints_) {
+        if (current_joints_.find(joint) == current_joints_.end()) {
+          return;
+        }
+      }
+      initial_joints_.clear();
+      for (const auto & joint : active_joints_) {
+        initial_joints_.push_back(current_joints_[joint]);
+      }
+      planned_joints_ = initial_joints_;
+      ready_ = true;
     }
-    initial_joints_.clear();
-    for (const auto & joint : active_joints_) {
-      initial_joints_.push_back(current_joints_[joint]);
-    }
-    planned_joints_ = initial_joints_;
-    ready_ = true;
     if (align_to_holder()) {
       aligned_ = true;
       // Subscribe only after alignment so queued pre-move detections cannot be used.
       targets_subscription_ = create_subscription<std_msgs::msg::Float64MultiArray>(
         "detected_targets", 10,
         std::bind(&ScreenStandoffMover::receive_targets, this, std::placeholders::_1));
+      detection_timer_ = create_wall_timer(
+        std::chrono::duration<double>(detection_timeout_sec_), [this]() {
+          if (!started_) {
+            RCLCPP_ERROR(get_logger(), "Timed out waiting for stable RGB targets");
+            finish(false);
+          }
+        });
       RCLCPP_INFO(get_logger(), "Camera aligned; waiting for stable RGB targets");
+    } else {
+      finish(false);
     }
   }
 
@@ -253,11 +356,14 @@ private:
   bool plan_and_execute()
   {
     moveit_msgs::msg::RobotState start_state;
-    for (const auto & [joint, position] : current_joints_) {
-      start_state.joint_state.name.push_back(joint);
-      const auto active = std::find(active_joints_.begin(), active_joints_.end(), joint);
-      start_state.joint_state.position.push_back(
-        active == active_joints_.end() ? position : planned_joints_[active - active_joints_.begin()]);
+    {
+      std::lock_guard<std::mutex> lock(joint_mutex_);
+      for (const auto & [joint, position] : current_joints_) {
+        start_state.joint_state.name.push_back(joint);
+        const auto active = std::find(active_joints_.begin(), active_joints_.end(), joint);
+        start_state.joint_state.position.push_back(
+          active == active_joints_.end() ? position : planned_joints_[active - active_joints_.begin()]);
+      }
     }
     move_group_->setStartState(start_state);
     moveit::planning_interface::MoveGroupInterface::Plan plan;
@@ -353,9 +459,157 @@ private:
     return plan_and_execute();
   }
 
-  void touch_screen(const std::string & color)
+  bool touch_screen(const Target & target)
   {
-    RCLCPP_INFO(get_logger(), "%s reached; touch_screen is deferred", color.c_str());
+    const auto & color = target.color;
+    if (!touch_enabled_ || plan_only_) {
+      RCLCPP_INFO(get_logger(), "%s reached; touch disabled", color.c_str());
+      return true;
+    }
+    if (steady_ms() - last_touch_ms_.load() > 500 || touch_detected_.load()) {
+      RCLCPP_ERROR(get_logger(), "Touch signal is missing, stale, or already active");
+      return false;
+    }
+    if (!servo_started_) {
+      if (!servo_start_client_->wait_for_service(std::chrono::seconds(2))) {
+        RCLCPP_ERROR(get_logger(), "MoveIt Servo is unavailable; bring up use_servo:=true");
+        return false;
+      }
+      auto future = servo_start_client_->async_send_request(
+        std::make_shared<std_srvs::srv::Trigger::Request>());
+      if (future.wait_for(std::chrono::seconds(2)) != std::future_status::ready ||
+        !future.get()->success)
+      {
+        RCLCPP_ERROR(get_logger(), "Could not start MoveIt Servo");
+        return false;
+      }
+      servo_started_ = true;
+    } else if (!set_servo_paused(false)) {
+      return false;
+    }
+
+    tf2::Vector3 direction;
+    double start_z;
+    try {
+      tf2::Transform world_holder;
+      tf2::fromMsg(tf_buffer_->lookupTransform("world", holder_frame_, tf2::TimePointZero,
+        tf2::durationFromSec(1.0)).transform, world_holder);
+      direction = world_holder.getBasis() * tf2::Vector3(0.0, 0.0, -1.0);
+      start_z = tf_buffer_->lookupTransform(holder_frame_, end_effector_link_,
+        tf2::TimePointZero, tf2::durationFromSec(1.0)).transform.translation.z;
+    } catch (const tf2::TransformException & error) {
+      set_servo_paused(true);
+      RCLCPP_ERROR(get_logger(), "Cannot establish touch direction: %s", error.what());
+      return false;
+    }
+    RCLCPP_INFO(get_logger(), "Touch %s: tip starts %.1f mm from holder plane",
+      color.c_str(), start_z * 1000.0);
+
+    const auto command = [this, &direction](double sign) {
+        geometry_msgs::msg::TwistStamped twist;
+        twist.header.stamp = now();
+        twist.header.frame_id = "world";
+        twist.twist.linear.x = sign * touch_speed_mps_ * direction.x();
+        twist.twist.linear.y = sign * touch_speed_mps_ * direction.y();
+        twist.twist.linear.z = sign * touch_speed_mps_ * direction.z();
+        servo_publisher_->publish(twist);
+      };
+    const auto halt = [&command]() {
+        for (int count = 0; count < 5; ++count) {
+          command(0.0);
+          std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+      };
+    const auto tip_z = [this]() {
+        return tf_buffer_->lookupTransform(holder_frame_, end_effector_link_,
+          tf2::TimePointZero, tf2::durationFromSec(0.2)).transform.translation.z;
+      };
+
+    bool touched = false;
+    bool contact_seen = false;
+    const auto started_ms = steady_ms();
+    const auto deadline = started_ms + static_cast<int64_t>(touch_timeout_sec_ * 1000.0);
+    try {
+      while (rclcpp::ok() && steady_ms() < deadline) {
+        const auto status = servo_status_.load();
+        if (status == 2 || status == 4 || status == 5) {
+          RCLCPP_ERROR(get_logger(), "Touch stopped by MoveIt Servo status %d", status);
+          break;
+        }
+        if (steady_ms() - started_ms > 500 &&
+          steady_ms() - last_servo_status_ms_.load() > 500)
+        {
+          RCLCPP_ERROR(get_logger(), "Touch stopped: Servo status is stale");
+          break;
+        }
+        if (steady_ms() - last_touch_ms_.load() > 500) {
+          RCLCPP_ERROR(get_logger(), "Touch stopped: contact signal is stale");
+          break;
+        }
+        if (start_z - tip_z() > touch_max_travel_m_) {
+          RCLCPP_ERROR(get_logger(), "Touch stopped: travel limit reached");
+          break;
+        }
+        if (touch_detected_.load()) {
+          contact_seen = true;
+          const auto tip = tf_buffer_->lookupTransform(holder_frame_, end_effector_link_,
+            tf2::TimePointZero, tf2::durationFromSec(0.2)).transform.translation;
+          const double error = std::hypot(
+            tip.x - target.point.point.x, tip.y - target.point.point.y);
+          RCLCPP_INFO(get_logger(), "Touch XY error: %.1f mm", error * 1000.0);
+          touched = error <= max_touch_xy_error_m_;
+          break;
+        }
+        command(1.0);
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      }
+      halt();
+      RCLCPP_INFO(get_logger(), "Touch probe: tip %.1f mm from holder plane, contact=%s",
+        tip_z() * 1000.0, touched ? "true" : "false");
+      if (contact_seen) {
+        const double contact_z = tip_z();
+        const auto retract_deadline = steady_ms() + static_cast<int64_t>(touch_timeout_sec_ * 1000.0);
+        while (rclcpp::ok() && steady_ms() < retract_deadline && tip_z() < start_z - 0.002) {
+          if (tip_z() < contact_z - 0.003) {
+            break;  // Unexpected motion direction: stop before moving farther into the phone.
+          }
+          command(-1.0);
+          std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+        halt();
+        touched = touched && tip_z() >= start_z - 0.002;
+      }
+    } catch (const tf2::TransformException & error) {
+      halt();
+      set_servo_paused(true);
+      RCLCPP_ERROR(get_logger(), "Touch transform failed: %s", error.what());
+      return false;
+    }
+    if (!set_servo_paused(true)) {
+      return false;
+    }
+    if (!touched) {
+      RCLCPP_ERROR(get_logger(), "Touch/retract failed; no further robot movement will be planned");
+      return false;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (steady_ms() - last_joint_ms_.load() > 500) {
+      RCLCPP_ERROR(get_logger(), "Joint state is stale after touch");
+      return false;
+    }
+    {
+      std::lock_guard<std::mutex> lock(joint_mutex_);
+      for (std::size_t index = 0; index < active_joints_.size(); ++index) {
+        const auto joint = current_joints_.find(active_joints_[index]);
+        if (joint == current_joints_.end()) {
+          RCLCPP_ERROR(get_logger(), "Missing joint state after touch");
+          return false;
+        }
+        planned_joints_[index] = joint->second;
+      }
+    }
+    RCLCPP_INFO(get_logger(), "%s touched and tool retracted", color.c_str());
+    return true;
   }
 
   void run_sequence()
@@ -370,27 +624,37 @@ private:
         complete = false;
         break;
       }
-      touch_screen(targets_[index].color);
+      if (!touch_screen(targets_[index])) {
+        complete = false;
+        break;
+      }
     }
 
     if (!complete) {
       RCLCPP_ERROR(get_logger(), "Sequence stopped; inspect the robot before any recovery move");
+      finish(false);
       return;
     }
     move_group_->setJointValueTarget(initial_joints_);
     if (!plan_and_execute()) {
       RCLCPP_ERROR(get_logger(), "Failed to return to the initial joint state");
+      finish(false);
       return;
     }
     RCLCPP_INFO(
       get_logger(), "Standoff sequence %s; returned to the initial joint state",
       complete ? "complete" : "stopped");
+    finish(true);
   }
 
   bool ready_{false};
   bool aligned_{false};
   bool started_{false};
   bool plan_only_{false};
+  bool touch_enabled_{false};
+  bool sim_{false};
+  bool servo_started_{false};
+  bool succeeded_{false};
   tf2::Quaternion target_orientation_;
   std::string move_group_node_;
   std::string planning_group_;
@@ -398,12 +662,24 @@ private:
   std::string target_link_;
   std::string holder_frame_;
   double approach_distance_m_;
+  double sim_touch_approach_distance_m_;
   double observation_distance_m_;
   bool align_before_each_target_;
   double planning_time_;
   int attempts_;
   double velocity_;
   double acceleration_;
+  double detection_timeout_sec_;
+  double touch_speed_mps_;
+  double touch_max_travel_m_;
+  double touch_timeout_sec_;
+  double max_touch_xy_error_m_;
+  std::atomic<bool> touch_detected_{false};
+  std::atomic<int64_t> last_touch_ms_{0};
+  std::atomic<int8_t> servo_status_{-1};
+  std::atomic<int64_t> last_servo_status_ms_{0};
+  std::atomic<int64_t> last_joint_ms_{0};
+  std::mutex joint_mutex_;
   double calibration_x_m_;
   double calibration_y_m_;
   std::vector<Target> targets_;
@@ -413,7 +689,16 @@ private:
   std::vector<double> planned_joints_;
   rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr targets_subscription_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscription_;
+  rclcpp::CallbackGroup::SharedPtr joint_group_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goal_publisher_;
+  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr servo_publisher_;
+  rclcpp::TimerBase::SharedPtr detection_timer_;
+  rclcpp::CallbackGroup::SharedPtr touch_group_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr touch_subscription_;
+  rclcpp::Subscription<std_msgs::msg::Int8>::SharedPtr servo_status_subscription_;
+  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr servo_start_client_;
+  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr servo_pause_client_;
+  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr servo_unpause_client_;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
   std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_;
@@ -427,10 +712,13 @@ int main(int argc, char ** argv)
   try {
     const auto node = std::make_shared<ScreenStandoffMover>();
     node->initialize();
-    rclcpp::spin(node);
+    rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(), 2);
+    executor.add_node(node);
+    executor.spin();
+    return node->succeeded() ? 0 : 1;
   } catch (const std::exception & error) {
     RCLCPP_ERROR(rclcpp::get_logger("move_to_screen_standoff"), "%s", error.what());
   }
   rclcpp::shutdown();
-  return 0;
+  return 1;
 }

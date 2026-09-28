@@ -68,4 +68,5 @@ command_out_topic: /denso_joint_trajectory_controller/joint_trajectory # Publish
 check_collisions: true # Check collisions?
 collision_check_rate: 10.0 # [Hz] Collision-checking can easily bog down a CPU if done too often.
 self_collision_proximity_threshold: 0.01 # Start decelerating when a self-collision is this far [m]
+sim_touch_self_collision_proximity_threshold: 0.001 # Collab simulation only; selected by dual bringup with virtual phone.
 scene_collision_proximity_threshold: 0.02 # Start decelerating when a scene collision is this far [m]

@@ -587,6 +587,7 @@ def generate_launch_description():
 
     # Get parameters for the Servo node
     servo_yaml = load_yaml('denso_robot_moveit_config', 'config/moveit_servo.yaml')
+    sim_touch_self_collision = servo_yaml.pop('sim_touch_self_collision_proximity_threshold')
 
     left_servo_params = {'moveit_servo': servo_yaml,
                     'moveit_servo.use_gazebo': sim,
@@ -596,6 +597,12 @@ def generate_launch_description():
                     'moveit_servo.robot_link_command_frame': 'left_base_link',
                     'moveit_servo.command_out_topic': '/left_denso_joint_trajectory_controller/joint_trajectory'
     }
+    left_servo_params['moveit_servo.self_collision_proximity_threshold'] = ParameterValue(
+        PythonExpression([
+            str(sim_touch_self_collision), " if '", sim, "' == 'true' and '",
+            right_virtual_phone, "' == 'true' else ",
+            str(servo_yaml['self_collision_proximity_threshold']),
+        ]), value_type=float)
 
     left_servo_node = Node(
         package='moveit_servo',
