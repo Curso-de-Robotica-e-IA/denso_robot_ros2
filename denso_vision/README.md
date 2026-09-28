@@ -83,6 +83,18 @@ ros2 topic pub --once /target_pixel geometry_msgs/msg/PointStamped \
 | `target_point` | `geometry_msgs/msg/PointStamped` | Selected pixel expressed as `(x, y, 0)` on the holder plane |
 | `debug_image` | `sensor_msgs/msg/Image` | Detected tags and selected pixel overlay |
 | `target_pixel` | `geometry_msgs/msg/PointStamped` | Runtime input selecting an image `(u, v)` pixel |
+| `detected_targets` | `std_msgs/msg/Float64MultiArray` | One stable, complete RGB set; six values per target: color index (red=0, green=1, blue=2), pixel x/y, pixel radius, holder-plane x/y in metres |
+
+The detector discovers the count from the image and publishes
+`detected_targets` after the same set appears for `stable_frames` frames.
+It checks that at least one RGB trio is visible, RGB counts are equal, all
+circles are fully inside the configured holder-plane ROI, and none overlap.
+Without an independent count, an entirely hidden RGB trio cannot be
+distinguished from a smaller complete layout. The ROI excludes the top
+control strip and tag area. A detected layout is saved as PNG and JSON in
+`target_diagnostic_dir`; incomplete layouts produce diagnostic screenshots.
+The old `dots/red`, `dots/green`, and `dots/blue` topics still publish the
+first target of each color for existing consumers.
 
 Homography alone recovers coordinates only on the known plane: its third
 coordinate is therefore exactly zero in `cellphone_holder_tags_frame`. It

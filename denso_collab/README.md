@@ -49,15 +49,33 @@ plan and execute the right arm followed by the left alignment. The bounded
 offsets, tilts, attempts, validation timeout, and camera distance are also
 configured there.
 
-The normal launch uses the current joint state of both robots. Before each
-red, green, and blue target, it aligns the D405 to the holder's current TF,
-then moves `left_calib_link` to the target at a fixed screen-normal standoff.
-It ignores dot detections until the first alignment has completed.
-The holder stays still. Alignment and standoff parameters are in
-`config/cellphone_collab.yaml`. `touch_screen()` is deliberately only a
-placeholder between moves.
+The normal launch uses the current joint state of both robots. It aligns the
+D405, waits for a stable complete set of RGB circles, then approaches every
+detected centre in screen order (top to bottom, left to right). The holder
+stays still. The target list is captured once before moving; later camera
+frames do not change that list. `touch_screen()` is still a placeholder, so
+the Android test will not complete from these approaches alone.
+The camera aligns once before detection; set `align_before_each_target: true`
+to realign between targets if needed.
+`config/cellphone_collab.yaml` controls standoff planning time, planning
+attempts, velocity scaling, and acceleration scaling. The launch loads these
+values when the node starts; restart it after changing the YAML.
 
 ```bash
 ros2 launch denso_collab cellphone_collab.launch.py \
-  image_source:=topic image_topic:=/left_basic_camera standoff_m:=0.1
+  image_source:=topic image_topic:=/left_basic_camera \
+  standoff_m:=0.1 plan_only:=true
 ```
+
+Use Android Settings to vary fixed/random positions, fixed/random radii, and
+the number of RGB trios (try 1–4). The robot discovers the count, positions,
+sizes, and colors from the camera; it requires no matching trio count in ROS.
+
+Use `plan_only:=true` first to check MoveIt plans without moving. The active
+screen must fit all circles; if the app reports that targets cannot fit, lower
+the count or radius in Settings. The detector saves a PNG and target JSON under
+`/tmp/denso_target_diagnostics` when a stable layout is found; it also saves
+diagnostic PNGs when detection fails. Tune `denso_vision/config/cellphone_holder.yaml`
+for camera resolution, HSV thresholds, radius limits, stable frames, and
+holder-plane ROI. Calibration offsets in `config/cellphone_collab.yaml` are in
+metres and limited to ±20 mm.

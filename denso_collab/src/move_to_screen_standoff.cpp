@@ -1,10 +1,8 @@
-#include <array>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <functional>
 #include <memory>
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -16,6 +14,7 @@
 #include <rcl_interfaces/srv/get_parameters.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
+#include <std_msgs/msg/float64_multi_array.hpp>
 #include <moveit_msgs/msg/robot_state.hpp>
 #include <tf2/LinearMath/Transform.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -26,6 +25,15 @@
 
 namespace
 {
+
+struct Target
+{
+  std::string color;
+  double pixel_x;
+  double pixel_y;
+  double radius_px;
+  geometry_msgs::msg::PointStamped point;
+};
 
 bool load_descriptions_from_move_group(
   const rclcpp::Node::SharedPtr & node, const std::string & move_group_node)
@@ -97,11 +105,24 @@ public:
     standoff_m_ = declare_parameter<double>("standoff_m", 0.1);
     observation_distance_m_ = declare_parameter<double>("observation_distance_m", 0.3);
     align_before_each_target_ = declare_parameter<bool>("align_before_each_target", true);
-    planning_time_ = declare_parameter<double>("planning_time", 8.0);
-    attempts_ = declare_parameter<int>("num_planning_attempts", 10);
-    velocity_ = declare_parameter<double>("velocity_scaling", 0.1);
-    acceleration_ = declare_parameter<double>("acceleration_scaling", 0.1);
+    planning_time_ = declare_parameter<double>("planning_time");
+    attempts_ = declare_parameter<int>("num_planning_attempts");
+    velocity_ = declare_parameter<double>("velocity_scaling");
+    acceleration_ = declare_parameter<double>("acceleration_scaling");
+    if (!std::isfinite(planning_time_) || planning_time_ <= 0.0 || attempts_ < 1 ||
+      !std::isfinite(velocity_) || velocity_ <= 0.0 || velocity_ > 1.0 ||
+      !std::isfinite(acceleration_) || acceleration_ <= 0.0 || acceleration_ > 1.0)
+    {
+      throw std::runtime_error("Invalid planning time, attempts, or velocity/acceleration scaling");
+    }
     plan_only_ = declare_parameter<bool>("plan_only", false);
+    calibration_x_m_ = declare_parameter<double>("calibration_offset_x_m", 0.0);
+    calibration_y_m_ = declare_parameter<double>("calibration_offset_y_m", 0.0);
+    if (!std::isfinite(calibration_x_m_) || !std::isfinite(calibration_y_m_) ||
+      std::abs(calibration_x_m_) > 0.02 || std::abs(calibration_y_m_) > 0.02)
+    {
+      throw std::runtime_error("Calibration offsets must be within +/-20 mm");
+    }
   }
 
   void initialize()
@@ -123,14 +144,6 @@ public:
     tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
     goal_publisher_ = create_publisher<geometry_msgs::msg::PoseStamped>(
       "screen_standoff_goal", 10);
-    const std::array<std::string, 3> colors{"red", "green", "blue"};
-    for (std::size_t index = 0; index < colors.size(); ++index) {
-      subscriptions_[index] = create_subscription<geometry_msgs::msg::PointStamped>(
-        "/dots/" + colors[index], 10,
-        [this, index](geometry_msgs::msg::PointStamped::SharedPtr point) {
-          receive_target(index, std::move(point));
-        });
-    }
     active_joints_ = move_group_->getActiveJoints();
     joint_state_subscription_ = create_subscription<sensor_msgs::msg::JointState>(
       "/joint_states", 10,
@@ -157,26 +170,68 @@ private:
     }
     planned_joints_ = initial_joints_;
     ready_ = true;
-    if (!align_before_each_target_) {
-      aligned_ = true;
-      RCLCPP_INFO(get_logger(), "Received current robot state; waiting for colored dots");
-      return;
-    }
     if (align_to_holder()) {
       aligned_ = true;
-      RCLCPP_INFO(get_logger(), "Camera aligned; waiting for colored dots");
+      // Subscribe only after alignment so queued pre-move detections cannot be used.
+      targets_subscription_ = create_subscription<std_msgs::msg::Float64MultiArray>(
+        "detected_targets", 10,
+        std::bind(&ScreenStandoffMover::receive_targets, this, std::placeholders::_1));
+      RCLCPP_INFO(get_logger(), "Camera aligned; waiting for stable RGB targets");
     }
   }
 
-  void receive_target(
-    std::size_t index, const geometry_msgs::msg::PointStamped::SharedPtr point)
+  void receive_targets(const std_msgs::msg::Float64MultiArray::SharedPtr message)
   {
     if (!ready_ || !aligned_ || started_) {
       return;
     }
-    targets_[index] = *point;
-    if (!targets_[0] || !targets_[1] || !targets_[2]) {
+    if (message->layout.dim.size() != 1 ||
+      message->layout.dim[0].label != holder_frame_)
+    {
+      RCLCPP_ERROR(get_logger(), "Detected target frame does not match %s", holder_frame_.c_str());
       return;
+    }
+    // Each row is [RGB index, pixel x, pixel y, radius px, holder x m, holder y m].
+    if (message->data.empty() || message->data.size() % 18 != 0 ||
+      message->layout.dim[0].size != message->data.size() / 6)
+    {
+      RCLCPP_ERROR(get_logger(), "Detected targets do not form complete RGB trios");
+      return;
+    }
+    const std::vector<std::string> colors{"red", "green", "blue"};
+    std::vector<Target> incoming;
+    std::vector<int> counts(3, 0);
+    for (std::size_t index = 0; index < message->data.size(); index += 6) {
+      const auto * row = &message->data[index];
+      if (!std::all_of(row, row + 6, [](double value) {return std::isfinite(value);}) ||
+        row[0] < 0.0 || row[0] > 2.0 || row[0] != std::floor(row[0]) || row[3] <= 0.0)
+      {
+        RCLCPP_ERROR(get_logger(), "Invalid target entry in detected_targets");
+        return;
+      }
+      const auto color = static_cast<std::size_t>(row[0]);
+      ++counts[color];
+      Target target{colors[color], row[1], row[2], row[3],
+        geometry_msgs::msg::PointStamped()};
+      target.point.header.frame_id = holder_frame_;
+      target.point.point.x = row[4];
+      target.point.point.y = row[5];
+      incoming.push_back(target);
+    }
+    if (counts[0] != counts[1] || counts[1] != counts[2]) {
+      RCLCPP_ERROR(get_logger(), "Detected RGB counts are unequal: red=%d green=%d blue=%d",
+        counts[0], counts[1], counts[2]);
+      return;
+    }
+    std::sort(incoming.begin(), incoming.end(), [](const Target & a, const Target & b) {
+      return a.pixel_y == b.pixel_y ? a.pixel_x < b.pixel_x : a.pixel_y < b.pixel_y;
+    });
+    targets_ = std::move(incoming);
+    for (std::size_t index = 0; index < targets_.size(); ++index) {
+      const auto & target = targets_[index];
+      RCLCPP_INFO(get_logger(), "Target %zu/%zu: %s pixel=(%.1f, %.1f) r=%.1f holder=(%.4f, %.4f)",
+        index + 1, targets_.size(), target.color.c_str(), target.pixel_x,
+        target.pixel_y, target.radius_px, target.point.point.x, target.point.point.y);
     }
     started_ = true;
     run_sequence();
@@ -210,21 +265,24 @@ private:
       return false;
     }
     const auto & trajectory = plan.trajectory_.joint_trajectory;
+    auto next_joints = planned_joints_;
     if (!trajectory.points.empty()) {
       const auto & endpoint = trajectory.points.back().positions;
       for (std::size_t index = 0; index < trajectory.joint_names.size(); ++index) {
         const auto joint = std::find(
           active_joints_.begin(), active_joints_.end(), trajectory.joint_names[index]);
         if (joint != active_joints_.end() && index < endpoint.size()) {
-          planned_joints_[std::distance(active_joints_.begin(), joint)] = endpoint[index];
+          next_joints[std::distance(active_joints_.begin(), joint)] = endpoint[index];
         }
       }
     }
     if (!plan_only_ && move_group_->execute(plan) != moveit::core::MoveItErrorCode::SUCCESS) {
       RCLCPP_ERROR(get_logger(), "Execution failed");
+      move_group_->stop();
       move_group_->clearPoseTargets();
       return false;
     }
+    planned_joints_ = std::move(next_joints);
     move_group_->stop();
     move_group_->clearPoseTargets();
     return true;
@@ -233,6 +291,8 @@ private:
   bool move_to(const std::string & color, const geometry_msgs::msg::PointStamped & point)
   {
     auto calib_pose = standoff_pose(point);
+    calib_pose.pose.position.x += calibration_x_m_;
+    calib_pose.pose.position.y += calibration_y_m_;
     geometry_msgs::msg::TransformStamped calib_to_target;
     try {
       calib_to_target = tf_buffer_->lookupTransform(
@@ -296,27 +356,30 @@ private:
 
   void run_sequence()
   {
-    const std::array<std::string, 3> colors{"red", "green", "blue"};
     bool complete = true;
-    for (std::size_t index = 0; index < colors.size(); ++index) {
+    for (std::size_t index = 0; index < targets_.size(); ++index) {
       if (index > 0 && align_before_each_target_ && !align_to_holder()) {
         complete = false;
         break;
       }
-      if (!move_to(colors[index], *targets_[index])) {
+      if (!move_to(targets_[index].color, targets_[index].point)) {
         complete = false;
         break;
       }
-      touch_screen(colors[index]);
+      touch_screen(targets_[index].color);
     }
 
+    if (!complete) {
+      RCLCPP_ERROR(get_logger(), "Sequence stopped; inspect the robot before any recovery move");
+      return;
+    }
     move_group_->setJointValueTarget(initial_joints_);
     if (!plan_and_execute()) {
       RCLCPP_ERROR(get_logger(), "Failed to return to the initial joint state");
       return;
     }
     RCLCPP_INFO(
-      get_logger(), "Color sequence %s; returned to the initial joint state",
+      get_logger(), "Standoff sequence %s; returned to the initial joint state",
       complete ? "complete" : "stopped");
   }
 
@@ -337,13 +400,14 @@ private:
   int attempts_;
   double velocity_;
   double acceleration_;
-  std::array<std::optional<geometry_msgs::msg::PointStamped>, 3> targets_;
+  double calibration_x_m_;
+  double calibration_y_m_;
+  std::vector<Target> targets_;
   std::vector<std::string> active_joints_;
   std::unordered_map<std::string, double> current_joints_;
   std::vector<double> initial_joints_;
   std::vector<double> planned_joints_;
-  std::array<rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr, 3>
-    subscriptions_;
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr targets_subscription_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscription_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goal_publisher_;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;

@@ -1,5 +1,8 @@
-"""ROS 2 node for detecting the cellphone holder's four AprilTags."""
+"""ROS 2 node for detecting the cellphone holder and its RGB targets."""
 
+import json
+import os
+import time
 from typing import Dict, Optional
 
 import cv2
@@ -15,6 +18,9 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Float64, Float64MultiArray, MultiArrayDimension
 
 from denso_vision.holder_geometry import HolderGeometry, transform_pixel
+from denso_vision.colored_targets import (
+    DEFAULT_HSV, StableTargets, detect_targets, validate_targets,
+)
 
 
 class CellphoneHolderDetector(Node):
@@ -51,8 +57,37 @@ class CellphoneHolderDetector(Node):
         self.declare_parameter('publish_debug_image', True)
         self.declare_parameter('detect_colored_dots', True)
         self.declare_parameter('min_dot_radius_px', 12.0)
-        self.declare_parameter('dot_roi_half_width_mm', 50.0)
-        self.declare_parameter('dot_roi_half_height_mm', 100.0)
+        self.declare_parameter('max_dot_radius_px', 150.0)
+        self.declare_parameter('target_roi_x_min_mm', -50.0)
+        self.declare_parameter('target_roi_x_max_mm', 50.0)
+        self.declare_parameter('target_roi_y_min_mm', -100.0)
+        self.declare_parameter('target_roi_y_max_mm', 85.0)
+        self.declare_parameter('stable_frames', 3)
+        self.declare_parameter('stable_tolerance_px', 3.0)
+        self.declare_parameter('target_diagnostic_dir', '/tmp/denso_target_diagnostics')
+        for color, bounds in DEFAULT_HSV.items():
+            for index, value in enumerate(bounds):
+                self.declare_parameter(f'{color}_hsv_{index}', list(value))
+
+        self._roi = tuple(
+            self.get_parameter(f'target_roi_{axis}_{side}_mm').value * 0.001
+            for axis in ('x', 'y') for side in ('min', 'max')
+        )
+        if self._roi[0] >= self._roi[1] or self._roi[2] >= self._roi[3]:
+            raise ValueError('Target ROI minimum must be less than maximum')
+        self._hsv_ranges = {
+            color: tuple(tuple(self.get_parameter(f'{color}_hsv_{index}').value)
+                         for index in range(len(bounds)))
+            for color, bounds in DEFAULT_HSV.items()
+        }
+        self._stable_targets = StableTargets(
+            self.get_parameter('stable_frames').value,
+            self.get_parameter('stable_tolerance_px').value,
+        )
+        self._diagnostic_dir = self.get_parameter('target_diagnostic_dir').value
+        self._last_diagnostic = 0.0
+        self._saved_layout = False
+        self._waiting_since = time.monotonic()
 
         self._tag_ids = tuple(
             int(value) for value in self.get_parameter('tag_ids').value
@@ -185,6 +220,9 @@ class CellphoneHolderDetector(Node):
             color: self.create_publisher(PointStamped, f'dots/{color}', 10)
             for color in ('red', 'blue', 'green')
         }
+        self._targets_publisher = self.create_publisher(
+            Float64MultiArray, 'detected_targets', 10
+        )
 
         source = {
             'topic': image_topic,
@@ -308,54 +346,23 @@ class CellphoneHolderDetector(Node):
 
         self._process_image(message, color_image)
 
-    def _detect_colored_dots(
-        self, image: np.ndarray, homography: np.ndarray
-    ) -> Dict[str, np.ndarray]:
-        """Return coloured dots located in the holder's central physical ROI."""
-        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-        ranges = {
-            'red': ((0, 100, 50), (10, 255, 255), (170, 100, 50), (180, 255, 255)),
-            'blue': ((100, 100, 50), (130, 255, 255)),
-            'green': ((45, 80, 50), (85, 255, 255)),
-        }
-        dots = {}
-        half_width = (
-            self.get_parameter('dot_roi_half_width_mm').value * 0.001
-        )
-        half_height = (
-            self.get_parameter('dot_roi_half_height_mm').value * 0.001
-        )
-        for color, bounds in ranges.items():
-            mask = cv2.inRange(hsv, np.array(bounds[0]), np.array(bounds[1]))
-            if len(bounds) == 4:
-                mask |= cv2.inRange(hsv, np.array(bounds[2]), np.array(bounds[3]))
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            candidates = []
-            for contour in contours:
-                (_, _), radius = cv2.minEnclosingCircle(contour)
-                if radius < self.get_parameter('min_dot_radius_px').value:
-                    continue
-                moment = cv2.moments(contour)
-                if not moment['m00']:
-                    continue
-                pixel = np.array([
-                    moment['m10'] / moment['m00'],
-                    moment['m01'] / moment['m00'],
-                ])
-                plane_point = transform_pixel(homography, pixel)
-                if (
-                    abs(plane_point[0]) <= half_width
-                    and abs(plane_point[1]) <= half_height
-                ):
-                    candidates.append((cv2.contourArea(contour), pixel))
-            if candidates:
-                dots[color] = max(candidates, key=lambda item: item[0])[1]
-        return dots
+    def _save_diagnostic(self, image: np.ndarray, reason: str) -> None:
+        if time.monotonic() - self._last_diagnostic < 5.0:
+            return
+        self._last_diagnostic = time.monotonic()
+        os.makedirs(self._diagnostic_dir, exist_ok=True)
+        path = os.path.join(self._diagnostic_dir, f'targets_{time.time_ns()}.png')
+        if cv2.imwrite(path, image):
+            self.get_logger().warning(f'{reason}; screenshot: {path}')
+        else:
+            self.get_logger().error(f'{reason}; could not save screenshot: {path}')
 
     def _process_image(
         self, message: Image, color_image: np.ndarray
     ) -> None:
         """Detect tags and publish homography results for one BGR image."""
+        raw_image = color_image.copy()
+        targets_processed = False
         gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = self._detect(gray_image)
         ordered_points = self._ordered_detections(corners, ids)
@@ -424,20 +431,54 @@ class CellphoneHolderDetector(Node):
                     message, homography, target_pixel
                 )
                 if self.get_parameter('detect_colored_dots').value:
-                    for color, pixel in self._detect_colored_dots(
-                        color_image, homography
-                    ).items():
-                        point = PointStamped()
-                        point.header.stamp = message.header.stamp
-                        point.header.frame_id = self._holder_frame_id
-                        plane_point = transform_pixel(homography, pixel)
-                        point.point.x, point.point.y = map(float, plane_point)
-                        self._dot_publishers[color].publish(point)
-                        overlay_lines.append(
-                            f'{color}: {plane_point[0] * 1000:.1f}, '
-                            f'{plane_point[1] * 1000:.1f} mm'
-                        )
-                        cv2.putText(color_image, color, tuple(np.rint(pixel).astype(int)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+                    targets_processed = True
+                    targets = detect_targets(
+                        raw_image, homography, self._roi,
+                        self.get_parameter('min_dot_radius_px').value,
+                        self.get_parameter('max_dot_radius_px').value,
+                        self._hsv_ranges,
+                    )
+                    if self._stable_targets.update(targets):
+                        try:
+                            validate_targets(targets)
+                        except ValueError as error:
+                            self._save_diagnostic(raw_image, str(error))
+                        else:
+                            if not self._saved_layout:
+                                os.makedirs(self._diagnostic_dir, exist_ok=True)
+                                stem = os.path.join(self._diagnostic_dir, f'layout_{time.time_ns()}')
+                                if not cv2.imwrite(stem + '.png', raw_image):
+                                    self.get_logger().error(f'Could not save target layout: {stem}.png')
+                                    return
+                                with open(stem + '.json', 'w', encoding='utf-8') as output:
+                                    json.dump([target.__dict__ for target in targets], output, indent=2)
+                                self.get_logger().info(f'Saved stable target layout: {stem}.png/.json')
+                                self._saved_layout = True
+                            data = []
+                            for target in targets:
+                                data.extend((
+                                    float(('red', 'green', 'blue').index(target.color)),
+                                    target.pixel_x, target.pixel_y, target.radius_px,
+                                    target.holder_x, target.holder_y,
+                                ))
+                            target_message = Float64MultiArray(data=data)
+                            target_message.layout.dim = [MultiArrayDimension(
+                                label=self._holder_frame_id,
+                                size=len(targets), stride=len(data),
+                            )]
+                            self._targets_publisher.publish(target_message)
+                            self._waiting_since = time.monotonic()
+                            for color in ('red', 'green', 'blue'):
+                                target = next(item for item in targets if item.color == color)
+                                point = PointStamped()
+                                point.header = message.header
+                                point.header.frame_id = self._holder_frame_id
+                                point.point.x = target.holder_x
+                                point.point.y = target.holder_y
+                                self._dot_publishers[color].publish(point)
+                            overlay_lines.append(f'Targets: {len(targets)} stable')
+                    elif targets:
+                        overlay_lines.append(f'Targets: {len(targets)} stabilizing')
                 cv2.drawMarker(
                     color_image,
                     tuple(np.rint(target_pixel).astype(int)),
@@ -447,6 +488,12 @@ class CellphoneHolderDetector(Node):
                     2,
                 )
 
+        if not targets_processed:
+            self._stable_targets.update([])
+        if not self._saved_layout and time.monotonic() - self._waiting_since >= 5.0:
+            self._save_diagnostic(
+                raw_image, 'Waiting for stable RGB targets and four tags'
+            )
         for line_index, line in enumerate(overlay_lines):
             position = (12, 28 + 24 * line_index)
             cv2.putText(

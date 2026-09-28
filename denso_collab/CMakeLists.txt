@@ -8,6 +8,7 @@ find_package(moveit_ros_planning_interface REQUIRED)
 find_package(rcl_interfaces REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -20,6 +21,7 @@ ament_target_dependencies(move_to_screen_standoff
   rcl_interfaces
   rclcpp
   sensor_msgs
+  std_msgs
   tf2
   tf2_geometry_msgs
   tf2_ros)
