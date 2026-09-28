@@ -4,7 +4,7 @@ left_arm:
   kinematics_solver: vs050/IKFastKinematicsPlugin
   link_prefix: left_
   # Weighted squared travel used to rank analytic branches [J1..J6].
-  # Prefer elbow motion over large base and camera-wrist rotations.
+  # All joints have equal branch-ranking cost.
   solution_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
   log_solution_scores: false
   kinematics_solver_search_resolution: 0.005

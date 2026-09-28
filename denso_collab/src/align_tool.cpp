@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <chrono>
-#include <cmath>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include <geometry_msgs/msg/pose.hpp>
 
@@ -18,6 +18,8 @@
 
 #include <moveit/move_group_interface/move_group_interface.h>
 
+#include "denso_collab/alignment_pose.hpp"
+
 namespace
 {
 
@@ -25,20 +27,16 @@ struct Options
 {
   std::string move_group_node = "/move_group";
   std::string planning_group = "left_arm";
-  std::string target_frame = "right_cellphone_holder_phone_plane_frame";
+  std::string target_frame = "right_cellphone_holder_tags_frame";
   std::string camera_frame = "left_camera_depth_optical_frame";
   double distance_m = 0.25;  // Deprecated: kept as default for target_offset_z_m.
   double target_offset_x_m = 0.0;
   double target_offset_y_m = 0.0;
   double target_offset_z_m = 0.25;
-  // Optical +Z looks toward the phone plane's -Z normal; optical +X follows plane +X.
-  double target_roll_deg = -180.0;
-  double target_pitch_deg = 0.0;
-  double target_yaw_deg = 0.0;
   double planning_time = 8.0;
   int num_planning_attempts = 10;
-  double velocity_scaling = 0.1;
-  double acceleration_scaling = 0.1;
+  double velocity_scaling = 1.0;
+  double acceleration_scaling = 1.0;
   double startup_delay_sec = 3.0;
   double tf_timeout_sec = 8.0;
   bool plan_only = false;
@@ -112,46 +110,15 @@ bool load_descriptions_from_move_group(
 
   node->declare_parameter<std::string>("robot_description", robot_desc.string_value);
   node->declare_parameter<std::string>("robot_description_semantic", semantic_desc.string_value);
+  for (const auto & prefix : {std::string("left_"), std::string("right_")}) {
+    const std::string group = prefix == "left_" ? "left_arm" : "right_arm";
+    const std::string key = "robot_description_kinematics." + group + ".";
+    node->declare_parameter(key + "kinematics_solver", "vs050/IKFastKinematicsPlugin");
+    node->declare_parameter(key + "link_prefix", prefix);
+    node->declare_parameter<std::vector<double>>(
+      key + "solution_weights", {1.0, 1.0, 1.0, 1.0, 1.0, 1.0});
+  }
   return true;
-}
-
-geometry_msgs::msg::Pose build_camera_pose_from_target_tf(
-  const geometry_msgs::msg::TransformStamped & target_tf,
-  const tf2::Vector3 & target_offset_m,
-  const tf2::Vector3 & target_rpy_deg)
-{
-  constexpr double kPi = 3.14159265358979323846;
-  const auto deg_to_rad = [](double deg) { return deg * kPi / 180.0; };
-
-  tf2::Quaternion q_target;
-  tf2::fromMsg(target_tf.transform.rotation, q_target);
-  q_target.normalize();
-
-  const tf2::Vector3 p_target_in_planning(
-    target_tf.transform.translation.x,
-    target_tf.transform.translation.y,
-    target_tf.transform.translation.z);
-  const tf2::Transform t_planning_target(q_target, p_target_in_planning);
-
-  tf2::Quaternion q_target_camera;
-  q_target_camera.setRPY(
-    deg_to_rad(target_rpy_deg.x()),
-    deg_to_rad(target_rpy_deg.y()),
-    deg_to_rad(target_rpy_deg.z()));
-  q_target_camera.normalize();
-
-  const tf2::Transform t_target_camera(q_target_camera, target_offset_m);
-
-  // Homogeneous transform composition:
-  //   T_planning_camera = T_planning_target * T_target_camera
-  const tf2::Transform t_planning_camera = t_planning_target * t_target_camera;
-
-  geometry_msgs::msg::Pose pose;
-  pose.position.x = t_planning_camera.getOrigin().x();
-  pose.position.y = t_planning_camera.getOrigin().y();
-  pose.position.z = t_planning_camera.getOrigin().z();
-  pose.orientation = tf2::toMsg(t_planning_camera.getRotation());
-  return pose;
 }
 
 }  // namespace
@@ -171,9 +138,6 @@ int main(int argc, char ** argv)
   options.target_offset_x_m = node->declare_parameter<double>("target_offset_x_m", options.target_offset_x_m);
   options.target_offset_y_m = node->declare_parameter<double>("target_offset_y_m", options.target_offset_y_m);
   options.target_offset_z_m = node->declare_parameter<double>("target_offset_z_m", options.distance_m);
-  options.target_roll_deg = node->declare_parameter<double>("target_roll_deg", options.target_roll_deg);
-  options.target_pitch_deg = node->declare_parameter<double>("target_pitch_deg", options.target_pitch_deg);
-  options.target_yaw_deg = node->declare_parameter<double>("target_yaw_deg", options.target_yaw_deg);
   options.planning_time = node->declare_parameter<double>("planning_time", options.planning_time);
   options.num_planning_attempts =
     node->declare_parameter<int>("num_planning_attempts", options.num_planning_attempts);
@@ -260,20 +224,15 @@ int main(int argc, char ** argv)
       planning_frame.c_str(), options.target_frame.c_str(), ex.what());
     rclcpp::shutdown();
     return 2;
-  } 
+  }
   RCLCPP_INFO(logger, "Target frame '%s' found in planning frame '%s'", options.target_frame.c_str(), planning_frame.c_str());
 
   const tf2::Vector3 target_offset_m(
     options.target_offset_x_m,
     options.target_offset_y_m,
     options.target_offset_z_m);
-  const tf2::Vector3 target_rpy_deg(
-    options.target_roll_deg,
-    options.target_pitch_deg,
-    options.target_yaw_deg);
-
   const geometry_msgs::msg::Pose camera_target_pose =
-    build_camera_pose_from_target_tf(target_in_planning, target_offset_m, target_rpy_deg);
+    denso_collab::camera_pose_from_holder(target_in_planning.transform, target_offset_m);
 
   RCLCPP_INFO(logger, "Planning frame: %s", planning_frame.c_str());
   RCLCPP_INFO(logger, "Planning group: %s", options.planning_group.c_str());
@@ -285,11 +244,10 @@ int main(int argc, char ** argv)
     options.target_offset_x_m, options.target_offset_y_m, options.target_offset_z_m);
   RCLCPP_INFO(
     logger,
-    "Target orientation in target frame [roll pitch yaw] deg: [%.3f %.3f %.3f]",
-    options.target_roll_deg, options.target_pitch_deg, options.target_yaw_deg);
+    "Target orientation: holder optical roll + 180 deg");
   RCLCPP_INFO(
     logger,
-    "Transform model: T_planning_camera = T_planning_target * T_target_camera");
+    "Transform model: T_world_camera = T_world_holder * Rx(180 deg)");
   RCLCPP_INFO(
     logger,
     "Computed target pose (xyz xyzw): [%.6f %.6f %.6f] [%.6f %.6f %.6f %.6f]",

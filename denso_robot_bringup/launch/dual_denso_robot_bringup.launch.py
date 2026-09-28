@@ -164,7 +164,7 @@ def generate_launch_description():
             description='Start robot with fake hardware mirroring command to its states.'))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'gazebo_args', default_value='-r -v 4',
+            'gazebo_args', default_value='-r -s -v 4',
             description='Arguments passed to Gazebo Sim before the world file.'))
     declared_arguments.append(
         DeclareLaunchArgument('use_servo', default_value='false', description='Launch MoveIt Servo?')
@@ -195,6 +195,31 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
+            'right_virtual_phone', default_value='false',
+            description='Attach a visual virtual phone to the right holder'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'virtual_phone_width', default_value='0.070',
+            description='Virtual phone width in metres'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'virtual_phone_height', default_value='0.150',
+            description='Virtual phone height in metres'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'virtual_phone_thickness', default_value='0.008',
+            description='Virtual phone body thickness in metres'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'virtual_phone_screen_offset', default_value='0.0',
+            description='Front-glass offset along the holder normal in metres'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
             'cellphone_holder_xyz', default_value='-0.021230953 0 0.05367',
             description='XYZ position of cellphone holder tag plane relative to J6'
         ))
@@ -220,7 +245,7 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'cellphone_holder_tag_size', default_value='0.031',
+            'cellphone_holder_tag_size', default_value='0.026875',
             description='Visual side length of each cellphone holder AprilTag marker'
         ))
     declared_arguments.append(
@@ -264,6 +289,11 @@ def generate_launch_description():
     right_basic_camera = LaunchConfiguration('right_basic_camera')
     left_cellphone_holder = LaunchConfiguration('left_cellphone_holder')
     right_cellphone_holder = LaunchConfiguration('right_cellphone_holder')
+    right_virtual_phone = LaunchConfiguration('right_virtual_phone')
+    virtual_phone_width = LaunchConfiguration('virtual_phone_width')
+    virtual_phone_height = LaunchConfiguration('virtual_phone_height')
+    virtual_phone_thickness = LaunchConfiguration('virtual_phone_thickness')
+    virtual_phone_screen_offset = LaunchConfiguration('virtual_phone_screen_offset')
     cellphone_holder_xyz = LaunchConfiguration('cellphone_holder_xyz')
     cellphone_holder_rpy = LaunchConfiguration('cellphone_holder_rpy')
     cellphone_holder_mesh_xyz = LaunchConfiguration('cellphone_holder_mesh_xyz')
@@ -303,6 +333,11 @@ def generate_launch_description():
             'right_basic_camera:=', right_basic_camera, ' ',
             'left_cellphone_holder:=', left_cellphone_holder, ' ',
             'right_cellphone_holder:=', right_cellphone_holder, ' ',
+            'right_virtual_phone:=', right_virtual_phone, ' ',
+            'virtual_phone_width:=', virtual_phone_width, ' ',
+            'virtual_phone_height:=', virtual_phone_height, ' ',
+            'virtual_phone_thickness:=', virtual_phone_thickness, ' ',
+            'virtual_phone_screen_offset:=', virtual_phone_screen_offset, ' ',
             'cellphone_holder_xyz:="', cellphone_holder_xyz, '" ',
             'cellphone_holder_rpy:="', cellphone_holder_rpy, '" ',
             'cellphone_holder_mesh_xyz:="', cellphone_holder_mesh_xyz, '" ',
@@ -327,7 +362,8 @@ def generate_launch_description():
             'model:=', denso_robot_model, ' ',
             'namespace:=', namespace, ' ',
             'left_basic_camera:=', left_basic_camera, ' ',
-            'right_basic_camera:=', right_basic_camera, ' '
+            'right_basic_camera:=', right_basic_camera, ' ',
+            'right_virtual_phone:=', right_virtual_phone, ' '
         ])
     robot_description_semantic = {'robot_description_semantic': ParameterValue(robot_description_semantic_content, value_type=str)}
     kinematics_yaml = load_yaml('denso_robot_moveit_config', 'config/dual_kinematics.yaml')

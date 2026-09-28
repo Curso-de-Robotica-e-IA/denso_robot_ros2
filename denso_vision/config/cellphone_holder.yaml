@@ -1,0 +1,40 @@
+cellphone_holder_detector:
+  ros__parameters:
+    image_source: realsense
+    image_topic: /basic_camera
+    video_path: ''
+    video_loop: true
+    video_fps: 0.0
+    realsense_frame_id: camera_color_optical_frame
+    realsense_serial: ''
+    realsense_width: 1280
+    realsense_height: 720
+    realsense_fps: 30
+    holder_frame_id: right_cellphone_holder_tags_frame
+    tag_ids: [1, 2, 3, 4]
+    tag_size_mm: 21.5
+    top_spacing_mm: 95.2
+    bottom_spacing_mm: 99.8
+    side_spacing_mm: 207.5
+    target_pixel_x: -1.0
+    target_pixel_y: -1.0
+    homography_ransac_threshold_mm: 4.0
+    stable_frames: 3
+    stable_tolerance_px: 3.0
+    min_dot_radius_px: 6.0
+    max_dot_radius_px: 150.0
+    red_hsv_0: [0, 100, 50]
+    red_hsv_1: [10, 255, 255]
+    red_hsv_2: [170, 100, 50]
+    red_hsv_3: [179, 255, 255]
+    green_hsv_0: [45, 80, 50]
+    green_hsv_1: [85, 255, 255]
+    blue_hsv_0: [100, 100, 50]
+    blue_hsv_1: [130, 255, 255]
+    # Holder-plane bounds exclude the tags and the phone's top controls.
+    target_roi_x_min_mm: -50.0
+    target_roi_x_max_mm: 50.0
+    target_roi_y_min_mm: -100.0
+    target_roi_y_max_mm: 85.0
+    target_diagnostic_dir: /tmp/denso_target_diagnostics
+    publish_debug_image: true

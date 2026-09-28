@@ -85,3 +85,8 @@ right_arm:
     - RRTstarkConfigDefault
     - TRRTkConfigDefault
     - PRMstarkConfigDefault
+
+dual_arm:
+  default_planner_config: RRTConnectkConfigDefault
+  planner_configs:
+    - RRTConnectkConfigDefault

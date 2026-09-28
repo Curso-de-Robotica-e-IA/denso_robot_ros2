@@ -14,9 +14,15 @@ RUN apt-get update -q && apt-get install -q -y --no-install-recommends \
     ros-$ROS_DISTRO-moveit-servo \  
     ros-$ROS_DISTRO-ros2-control \
     ros-$ROS_DISTRO-ros2-controllers \
+    ros-$ROS_DISTRO-cv-bridge \
+    python3-numpy \
+    python3-opencv \
+    python3-pip \
+    libusb-1.0-0 \
     terminator \
   && echo 'APT::Install-Recommends "false";' > /etc/apt/apt.conf.d/00norecommends \
   && rosdep install --ignore-src --from-paths src -y -r --rosdistro $ROS_DISTRO \
+  && python3 -m pip install --no-cache-dir pyrealsense2 \
   && rm -rf /var/lib/apt/lists/*
 
 RUN . /opt/ros/$ROS_DISTRO/setup.sh \

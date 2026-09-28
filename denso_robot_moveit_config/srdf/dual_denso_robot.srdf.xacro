@@ -5,6 +5,7 @@
   <xacro:arg name="model" default="denso_robot"/>
   <xacro:arg name="left_basic_camera" default="true"/>
   <xacro:arg name="right_basic_camera" default="false"/>
+  <xacro:arg name="right_virtual_phone" default="false"/>
 
   <xacro:include filename="$(find denso_robot_moveit_config)/robots/$(arg model)/srdf/denso_robot_macro.srdf.xacro"/>
 
@@ -17,5 +18,12 @@
     <group name="left_arm"/>
     <group name="right_arm"/>
   </group>
+
+  <xacro:if value="$(arg right_virtual_phone)">
+    <disable_collisions
+      link1="right_cellphone_holder_mount_frame"
+      link2="right_virtual_phone_link"
+      reason="Adjacent"/>
+  </xacro:if>
 
 </robot>

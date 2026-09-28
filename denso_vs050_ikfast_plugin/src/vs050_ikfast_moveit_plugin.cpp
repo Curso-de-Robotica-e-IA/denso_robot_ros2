@@ -448,7 +448,7 @@ bool IKFastKinematicsPlugin::initialize(const rclcpp::Node::SharedPtr& node,
     RCLCPP_INFO_STREAM(LOGGER, "Using link_prefix: '" << link_prefix_ << "'");
   }
 
-  const std::vector<double> default_solution_weights = { 4.0, 1.0, 1.0, 4.0, 3.0, 10.0 };
+  const std::vector<double> default_solution_weights = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
   lookupParam(node, "solution_weights", solution_weights_, default_solution_weights);
   if (solution_weights_.size() != num_joints_ ||
       std::any_of(solution_weights_.begin(), solution_weights_.end(), [](double weight) { return weight <= 0.0; }))
