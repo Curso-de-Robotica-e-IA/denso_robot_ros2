@@ -85,7 +85,8 @@ bool load_descriptions(const rclcpp::Node::SharedPtr & node)
 
 Limits load_limits(const rclcpp::Node::SharedPtr & node, const std::string & path)
 {
-  const YAML::Node values = YAML::LoadFile(path)["random_collab_pose"]["ros__parameters"];
+  const YAML::Node config = YAML::LoadFile(path);
+  const YAML::Node values = config["random_collab_pose"]["ros__parameters"];
   if (!values) {
     throw std::runtime_error("Missing random_collab_pose.ros__parameters");
   }
@@ -103,7 +104,8 @@ Limits load_limits(const rclcpp::Node::SharedPtr & node, const std::string & pat
       "validation_planning_timeout_sec",
       values["validation_planning_timeout_sec"].as<double>()),
     node->declare_parameter(
-      "camera_observation_distance_m", values["camera_observation_distance_m"].as<double>())};
+      "observation_distance_m",
+      config["move_to_screen_standoff"]["ros__parameters"]["observation_distance_m"].as<double>())};
   if (limits.planning_mode != "dual_arm" && limits.planning_mode != "sequential" ||
     limits.offset_x_m < 0.0 || limits.offset_y_m < 0.0 || limits.offset_z_m < 0.0 ||
     limits.tilt_x_deg < 0.0 || limits.tilt_y_deg < 0.0 || limits.attempts <= 0 ||

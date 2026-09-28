@@ -102,18 +102,20 @@ public:
     end_effector_link_ = declare_parameter<std::string>("tool_link", "left_calib_link");
     target_link_ = declare_parameter<std::string>("target_link", "left_camera_depth_optical_frame");
     holder_frame_ = declare_parameter<std::string>("holder_frame", "right_cellphone_holder_tags_frame");
-    standoff_m_ = declare_parameter<double>("standoff_m", 0.1);
-    observation_distance_m_ = declare_parameter<double>("observation_distance_m", 0.3);
-    align_before_each_target_ = declare_parameter<bool>("align_before_each_target", true);
+    approach_distance_m_ = declare_parameter<double>("approach_distance_m");
+    observation_distance_m_ = declare_parameter<double>("observation_distance_m");
+    align_before_each_target_ = declare_parameter<bool>("align_before_each_target");
     planning_time_ = declare_parameter<double>("planning_time");
     attempts_ = declare_parameter<int>("num_planning_attempts");
     velocity_ = declare_parameter<double>("velocity_scaling");
     acceleration_ = declare_parameter<double>("acceleration_scaling");
-    if (!std::isfinite(planning_time_) || planning_time_ <= 0.0 || attempts_ < 1 ||
+    if (!std::isfinite(approach_distance_m_) || approach_distance_m_ <= 0.0 ||
+      !std::isfinite(observation_distance_m_) || observation_distance_m_ <= 0.0 ||
+      !std::isfinite(planning_time_) || planning_time_ <= 0.0 || attempts_ < 1 ||
       !std::isfinite(velocity_) || velocity_ <= 0.0 || velocity_ > 1.0 ||
       !std::isfinite(acceleration_) || acceleration_ <= 0.0 || acceleration_ > 1.0)
     {
-      throw std::runtime_error("Invalid planning time, attempts, or velocity/acceleration scaling");
+      throw std::runtime_error("Invalid distance, planning time, attempts, or velocity/acceleration scaling");
     }
     plan_only_ = declare_parameter<bool>("plan_only", false);
     calibration_x_m_ = declare_parameter<double>("calibration_offset_x_m", 0.0);
@@ -237,14 +239,14 @@ private:
     run_sequence();
   }
 
-  geometry_msgs::msg::PoseStamped standoff_pose(
+  geometry_msgs::msg::PoseStamped approach_pose(
     const geometry_msgs::msg::PointStamped & point) const
   {
     geometry_msgs::msg::PoseStamped pose;
     pose.header = point.header;
     pose.pose.position.x = point.point.x;
     pose.pose.position.y = point.point.y;
-    pose.pose.position.z = standoff_m_;
+    pose.pose.position.z = approach_distance_m_;
     return pose;
   }
 
@@ -290,7 +292,7 @@ private:
 
   bool move_to(const std::string & color, const geometry_msgs::msg::PointStamped & point)
   {
-    auto calib_pose = standoff_pose(point);
+    auto calib_pose = approach_pose(point);
     calib_pose.pose.position.x += calibration_x_m_;
     calib_pose.pose.position.y += calibration_y_m_;
     geometry_msgs::msg::TransformStamped calib_to_target;
@@ -329,7 +331,9 @@ private:
       RCLCPP_ERROR(get_logger(), "MoveIt rejected the %s standoff pose", color.c_str());
       return false;
     }
-    RCLCPP_INFO(get_logger(), "Moving to %s at %.0f mm standoff", color.c_str(), standoff_m_ * 1000.0);
+    RCLCPP_INFO(
+      get_logger(), "Moving to %s at %.0f mm approach distance",
+      color.c_str(), approach_distance_m_ * 1000.0);
     return plan_and_execute();
   }
 
@@ -393,7 +397,7 @@ private:
   std::string end_effector_link_;
   std::string target_link_;
   std::string holder_frame_;
-  double standoff_m_;
+  double approach_distance_m_;
   double observation_distance_m_;
   bool align_before_each_target_;
   double planning_time_;

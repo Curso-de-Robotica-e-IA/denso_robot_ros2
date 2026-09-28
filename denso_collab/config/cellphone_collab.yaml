@@ -3,7 +3,9 @@ move_to_screen_standoff:
     holder_frame: right_cellphone_holder_tags_frame
     target_link: left_camera_depth_optical_frame
     tool_link: left_calib_link
-    observation_distance_m: 0.30
+    # Shared with random_collab_pose for its hypothetical camera alignment.
+    observation_distance_m: 0.25
+    approach_distance_m: 0.03
     align_before_each_target: false
     calibration_offset_x_m: 0.0
     calibration_offset_y_m: 0.0
@@ -18,8 +20,7 @@ random_collab_pose:
     max_holder_offset_x_m: 0.05
     max_holder_offset_y_m: 0.05
     max_holder_offset_z_m: 0.03
-    max_holder_tilt_x_deg: 45.0
-    max_holder_tilt_y_deg: 45.0
+    max_holder_tilt_x_deg: 10.0
+    max_holder_tilt_y_deg: 10.0
     max_candidate_attempts: 20
     validation_planning_timeout_sec: 2.0
-    camera_observation_distance_m: 0.25
