@@ -42,7 +42,7 @@ planning_group_name = {'planning_group_name': 'arm'}
 
 servo_node = Node(
     package='moveit_servo',
-    executable='servo_node_main',
+    executable='servo_node',
     ...
     parameters=[
         ...

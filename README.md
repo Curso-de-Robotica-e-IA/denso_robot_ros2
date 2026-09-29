@@ -225,7 +225,7 @@ For controlling a real DENSO robot, the RC8 controller must be configured.
 7. Create a robot definition file: `denso_robot_ros package` provides URDF models for _cobotta_ and _vs060_ robots, and associated [MoveIt2](https://moveit.picknik.ai/main/index.html) configuration packages as standard components.
     To control other robot types, see the _ROS2Converter_ page (**under construction**).
 
-8. Set speed/acceleration parameters: the URDF models and the associated [MoveIt2]https://moveit.picknik.ai/main/index.html) configuration packages created by _ROS2Converter_ have dummy speed/acceleration parameters.
+8. Set speed/acceleration parameters: the URDF models and the associated [MoveIt2](https://moveit.picknik.ai/main/index.html) configuration packages created by _ROS2Converter_ have dummy speed/acceleration parameters.
     To specify the actual speed/acceleration parameters, see the _AcquireVelAcc_ page (**under construction**).
 
 
@@ -261,7 +261,7 @@ ros2 launch denso_robot_bringup denso_robot_bringup.launch.py model:=vs050 sim:=
 For more information, see [SlaveMode robot control](docs/SlaveMode.md).
 
 
-## 6. Additional Documentation
+## 7. Additional Documentation
 
 Further documentation is available in the [`docs/`](docs/) directory:
 
