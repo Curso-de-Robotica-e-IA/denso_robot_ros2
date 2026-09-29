@@ -1,6 +1,6 @@
 # Gazebo Simulation
 
-This document describes how to customize the simulated environment used by the DENSO robot stack in Gazebo (Fortress) — adding objects to the world and configuring sensors.
+This document describes how to customize the simulated environment used by the DENSO robot stack in Gazebo — adding objects to the world and configuring sensors.
 
 World files are located in `denso_robot_gazebo/worlds/`.
 
@@ -16,7 +16,7 @@ There are two ways to add an object (model) to a world:
 2. Copy the SDF snippet from the model's page (`<>` button).
 3. Paste it into your world's `.sdf` file, inside the `<world>` tag.
 
-See the official [Model Insertion from Fuel](https://gazebosim.org/docs/fortress/fuel_insert/) tutorial for details.
+See the official [Model Insertion from Fuel](https://gazebosim.org/docs/harmonic/fuel_insert/) tutorial for details.
 
 ### 2. Download and Add a Model Permanently
 
@@ -47,9 +47,9 @@ Example:
 
 ## Sensors
 
-Sensors are defined using the `<sensor>` tag inside a `<gazebo>` block, referencing the link they should be attached to. The full list of available sensor types and their parameters is defined by the [SDFormat sensor specification](https://sdformat.org/spec/1.9/sensor/).
+Sensors are defined using the `<sensor>` tag inside a `<gazebo>` block, referencing the link they should be attached to. The full list of available sensor types and their parameters is defined by the [SDFormat sensor specification](https://sdformat.org/spec/1.11/sensor/).
 
-- `<sensor type="...">` — sensor type (e.g. `camera`, `depth_camera`, `gpu_lidar`, `imu`). See the [full list of sensor types](https://sdformat.org/spec/1.9/sensor/) for parameters specific to each type.
+- `<sensor type="...">` — sensor type (e.g. `camera`, `depth_camera`, `gpu_lidar`, `imu`). See the [full list of sensor types](https://sdformat.org/spec/1.11/sensor/) for parameters specific to each type.
 - `reference="..."` — the link the sensor is rigidly attached to.
 - `<topic>` — the ROS 2 topic name the sensor data will be published to.
 - `<update_rate>` — sensor update rate, in Hz.

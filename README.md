@@ -1,7 +1,7 @@
 
 # ROS2 Driver Packages for DENSO Robots
 
-The DENSO robot ROS2 stack contains libraries, configuration files, and ROS2 nodes for controlling a DENSO robot from ROS2 ([MoveIt2](https://moveit.picknik.ai/humble/index.html) and [Gazebo simulator](http://gazebosim.org/)).
+The DENSO robot ROS2 stack contains libraries, configuration files, and ROS2 nodes for controlling a DENSO robot from ROS2 ([MoveIt2](https://moveit.picknik.ai/main/index.html) and [Gazebo simulator](http://gazebosim.org/)).
 
 | ![denso_robots](docs/images/denso_robots.jpg) | ![denso_robot_control](docs/images/denso_robot_control.gif) | 
 | :--: | :--: | 
@@ -25,8 +25,8 @@ The supported robot models are the following:
   - Collaborative robots (not OSS type)
 
 
-Moreover, the DENSO robot ROS2 stack provides URDF models for COBOTTA and VS-060 robotic arms and associated [MoveIt2](https://moveit.picknik.ai/humble/index.html) configuration packages (as standard components).
-To control other robot types, see the _ROS2Converter_ page (**under construction**) for creating the URDF model and the associated [MoveIt2](https://moveit.picknik.ai/humble/index.html) configuration package.
+Moreover, the DENSO robot ROS2 stack provides URDF models for COBOTTA and VS-060 robotic arms and associated [MoveIt2](https://moveit.picknik.ai/main/index.html) configuration packages (as standard components).
+To control other robot types, see the _ROS2Converter_ page (**under construction**) for creating the URDF model and the associated [MoveIt2](https://moveit.picknik.ai/main/index.html) configuration package.
 
 
 ## 2. Packages in the Repository
@@ -46,8 +46,8 @@ To control other robot types, see the _ROS2Converter_ page (**under construction
 
 **Motion planning packages:**
 
-  - `denso_robot_moveit_config` - [MoveIt2](https://moveit.picknik.ai/humble/index.html) configuration files for specific DENSO robot models (SRDF, controller types, etc.)
-  - `denso_robot_moveit_demo` - ROS2 node for moving a robot (both simulated and real) using the [MoveIt2](https://moveit.picknik.ai/humble/index.html) motion planner (8 fixed positions, according to the robot model)
+  - `denso_robot_moveit_config` - [MoveIt2](https://moveit.picknik.ai/main/index.html) configuration files for specific DENSO robot models (SRDF, controller types, etc.)
+  - `denso_robot_moveit_demo` - ROS2 node for moving a robot (both simulated and real) using the [MoveIt2](https://moveit.picknik.ai/main/index.html) motion planner (8 fixed positions, according to the robot model)
 
 **Startup package:**
 
@@ -58,7 +58,7 @@ To control other robot types, see the _ROS2Converter_ page (**under construction
 
 > **NOTE**: alternatively, a ready-to-use Docker environment is available and does not require installing ROS2 or its dependencies on the host machine. See [Docker Environment](docs/docker_environment.md)
 
-1. Install [ROS2 Humble](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html)
+1. Install [ROS2 Jazzy](https://docs.ros.org/en/jazzy/Installation.html)
 
 2. Create a new ROS2 workspace:
 
@@ -71,17 +71,17 @@ To control other robot types, see the _ROS2Converter_ page (**under construction
 
    ```bash
    cd $COLCON_WS
-   git clone -b humble https://github.com/Curso-de-Robotica-e-IA/denso_robot_ros2.git src
+   git clone -b jazzy https://github.com/Curso-de-Robotica-e-IA/denso_robot_ros2.git src
    ```
 
-4. To use [MoveIt2](https://moveit.picknik.ai/humble/index.html), install the [required packages (binary installation, Humble version)](https://moveit.ai/install-moveit2/binary/).
+4. To use [MoveIt2](https://moveit.picknik.ai/main/index.html), install the [required packages (binary installation, Jazzy version)](https://moveit.ai/install-moveit2/binary/).
 
 5. Install dependencies (if not already installed):
 
    ```bash
-   sudo apt install ros-humble-moveit-servo
-   sudo apt install ros-humble-ros2-control
-   sudo apt install ros-humble-ros2-controllers
+   sudo apt install ros-jazzy-moveit-servo
+   sudo apt install ros-jazzy-ros2-control
+   sudo apt install ros-jazzy-ros2-controllers
    ```
 
 6. Compile and source the workspace:
@@ -192,7 +192,7 @@ For controlling a real DENSO robot, the RC8 controller must be configured.
 
 **FOLLOWING STEPS ARE ONLY REQUIRED IN CASE THE** [SlaveMode robot control](docs/SlaveMode.md) **MODALITY IS SELECTED !!**
 
-3. To control an RC8 controller with [MoveIt2](https://moveit.picknik.ai/humble/index.html), use _b-CAP Slave_ function.
+3. To control an RC8 controller with [MoveIt2](https://moveit.picknik.ai/main/index.html), use _b-CAP Slave_ function.
     To activate the _b-CAP Slave_ function, please check the license of the RC8 from the DENSO WAVE member site (logon required).
 
 | *DENSO WAVE member site logon* |
@@ -222,10 +222,10 @@ For controlling a real DENSO robot, the RC8 controller must be configured.
 | ![b-CAP Slave license registration](docs/images/registration_en.jpg) | 
 
 
-7. Create a robot definition file: `denso_robot_ros package` provides URDF models for _cobotta_ and _vs060_ robots, and associated [MoveIt2](https://moveit.picknik.ai/humble/index.html) configuration packages as standard components.
+7. Create a robot definition file: `denso_robot_ros package` provides URDF models for _cobotta_ and _vs060_ robots, and associated [MoveIt2](https://moveit.picknik.ai/main/index.html) configuration packages as standard components.
     To control other robot types, see the _ROS2Converter_ page (**under construction**).
 
-8. Set speed/acceleration parameters: the URDF models and the associated [MoveIt2]https://moveit.picknik.ai/humble/index.html) configuration packages created by _ROS2Converter_ have dummy speed/acceleration parameters.
+8. Set speed/acceleration parameters: the URDF models and the associated [MoveIt2](https://moveit.picknik.ai/main/index.html) configuration packages created by _ROS2Converter_ have dummy speed/acceleration parameters.
     To specify the actual speed/acceleration parameters, see the _AcquireVelAcc_ page (**under construction**).
 
 
@@ -261,12 +261,12 @@ ros2 launch denso_robot_bringup denso_robot_bringup.launch.py model:=vs050 sim:=
 For more information, see [SlaveMode robot control](docs/SlaveMode.md).
 
 
-## 6. Additional Documentation
+## 7. Additional Documentation
 
 Further documentation is available in the [`docs/`](docs/) directory:
 
   - [Frame Conventions](docs/frame_conventions.md) - coordinate frame and naming conventions used across the robot and tool packages
-  - [Docker Environment](docs/docker_environment.md) - running the DENSO ROS2 stack in a containerized environment with RViz2 and Gazebo Fortress
+  - [Docker Environment](docs/docker_environment.md) - running the DENSO ROS2 stack in a containerized environment with RViz2 and Gazebo
   - [MoveIt Servo](docs/moveit_servo.md) - robot arm control via TwistStamped and JointJog
   - [Adding Custom Tools](docs/adding_custom_tools.md) - how to add new tools (end-effectors) to the robot description package
   - [Adding sensors on Gazebo](docs/gazebo_simulation.md) - how to add sensors to the Gazebo simulation

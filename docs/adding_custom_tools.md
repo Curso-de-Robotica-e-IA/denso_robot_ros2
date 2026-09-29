@@ -74,7 +74,7 @@ Copy the template below and replace `your_tool` with your tool's name:
 
         <!-- If your tool has a 3D mesh, set its path in the geometry tag. -->
         <link name="${namespace}your_tool_link">
-            <!-- mass and inertia are mandatory, but can have generic values. For more informations: https://docs.ros.org/en/humble/Tutorials/Intermediate/URDF/Adding-Physical-and-Collision-Properties-to-a-URDF-Model.html#physical-properties -->
+            <!-- mass and inertia are mandatory, but can have generic values. For more informations: https://docs.ros.org/en/jazzy/Tutorials/Intermediate/URDF/Adding-Physical-and-Collision-Properties-to-a-URDF-Model.html#id2 -->
             <inertial>
                 <mass value="1"/>
                 <inertia ixx="1e-3" ixy="0" ixz="0" iyy="1e-3" iyz="0" izz="1e-3"/>
@@ -101,8 +101,8 @@ Copy the template below and replace `your_tool` with your tool's name:
         </joint>
 
         <!-- The block below is only needed if your tool requires a Gazebo sensor. -->
-        <!-- Sensor examples at: https://gazebosim.org/docs/fortress/sensors/ -->
-		<!-- For details of sensor tag: https://sdformat.org/spec/1.9/sensor/ -->
+        <!-- Sensor examples at: https://gazebosim.org/docs/harmonic/sensors/ -->
+		<!-- For details of sensor tag: https://sdformat.org/spec/1.11/sensor/ -->
         <gazebo reference="${namespace}your_tool_link">
             <sensor name="your_tool" type="sensor_type">
             </sensor>

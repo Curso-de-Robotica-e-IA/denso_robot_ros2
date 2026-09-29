@@ -3,7 +3,7 @@
     <xacro:macro name="gz_cam" params="namespace">
       <!-- You should always attach the flange -->
       <gazebo reference="${namespace}flange">
-      <!-- others specs can be add for camera sensor https://sdformat.org/spec/1.9/sensor/#sensor_camera -->
+      <!-- others specs can be add for camera sensor https://sdformat.org/spec/1.11/sensor/#sensor_camera -->
         <sensor name="${namespace}gz_cam" type="camera">
           <camera>
             <horizontal_fov>1.047</horizontal_fov>

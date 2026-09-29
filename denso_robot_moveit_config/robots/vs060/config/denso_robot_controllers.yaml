@@ -1,7 +1,7 @@
 # This config file is used by ros2_control
 controller_manager:
   ros__parameters:
-    update_rate: 1000  # Hz
+    update_rate: 125  # Hz
 
     denso_joint_trajectory_controller:
       type: joint_trajectory_controller/JointTrajectoryController
@@ -24,10 +24,9 @@ denso_joint_trajectory_controller:
     state_interfaces:
       - position
       - velocity
-    state_publish_rate: 1000.0
     action_monitor_rate: 20.0
     allow_partial_joints_goal: false
-    open_loop_control: true
+    interpolate_from_desired_state: true
     constraints:
       stopped_velocity_tolerance: 0.0
       goal_time: 0.0

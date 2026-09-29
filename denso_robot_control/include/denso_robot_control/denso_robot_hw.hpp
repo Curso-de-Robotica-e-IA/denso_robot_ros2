@@ -39,7 +39,7 @@ public:
   HRESULT Initialize();
 
   hardware_interface::CallbackReturn on_init(
-    const hardware_interface::HardwareInfo & info) override;
+    const hardware_interface::HardwareComponentInterfaceParams & params) override;
   std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
   std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
 
@@ -56,7 +56,6 @@ public:
 
   void SpinNode(rclcpp::Node::SharedPtr & node, DensoRobotControl_Ptr drobo);
 
-  HardwareInfo info_;
   // Store the commands for the real robot
   std::vector<double> cmd_interface_;
   std::vector<double> pos_interface_;
@@ -68,6 +67,17 @@ private:
 
   std::mutex mtx_mode_;
 
+  std::string node_name_;
+  std::string node_namespace_;
+  std::string robot_ip_address_;
+  std::string robot_name_;
+  int robot_joints_;
+  int ctrl_type_;
+  int arm_group_;
+  int send_format_;
+  int recv_format_;
+  bool verbose_;
+  std::vector<int> joint_type_;
 };
 
 }  // namespace denso_robot_control

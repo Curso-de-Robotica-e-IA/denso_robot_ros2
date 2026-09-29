@@ -61,6 +61,9 @@ def launch_setup(context, *args, **kwargs):
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
+        parameters=[{
+            'qos_overrides./tf_static.publisher.durability': 'transient_local'
+        }],
         output='screen'
     )
 

@@ -3,7 +3,7 @@ services:
     build: 
       context: ..
       dockerfile: .docker/Dockerfile
-    image: denso_ros:humble
+    image: denso_ros:jazzy
     privileged: true
     network_mode: host
     cap_add:
@@ -14,18 +14,18 @@ services:
     command: /bin/bash
     volumes:
       - ../:/root/denso_ws/src
-      - /tmp/.X11-unix:/tmp/.X11-unix
-      - $XAUTHORITY:/root/.Xauthority
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /tmp/.docker.xauth:/tmp/.docker.xauth:rw
     environment:
       QT_X11_NO_MITSHM: 1
       DISPLAY: $DISPLAY
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:?Set ROS_DOMAIN_ID before starting the container}
-      IGN_GAZEBO_RESOURCE_PATH: "/root/denso_ws/src/denso_robot_gazebo/worlds"
+      GZ_SIM_RESOURCE_PATH: "/root/denso_ws/src/denso_robot_gazebo/worlds"
   gpu:
     build: 
       context: ..
       dockerfile: .docker/Dockerfile
-    image: denso_ros:humble
+    image: denso_ros:jazzy
     privileged: true
     network_mode: host
     cap_add:
@@ -43,12 +43,15 @@ services:
               capabilities: [gpu]
     volumes:
       - ../:/root/denso_ws/src
-      - /tmp/.X11-unix:/tmp/.X11-unix
-      - $XAUTHORITY:/root/.Xauthority
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /tmp/.docker.xauth:/tmp/.docker.xauth:rw
     environment:
       QT_X11_NO_MITSHM: 1
       DISPLAY: $DISPLAY
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:?Set ROS_DOMAIN_ID before starting the container}
-      IGN_GAZEBO_RESOURCE_PATH: "/root/denso_ws/src/denso_robot_gazebo/worlds"
+      GZ_SIM_RESOURCE_PATH: "/root/denso_ws/src/denso_robot_gazebo/worlds"
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: all
+      __NV_PRIME_RENDER_OFFLOAD: 1
+      __GLX_VENDOR_LIBRARY_NAME: nvidia
+      __EGL_VENDOR_LIBRARY_FILENAMES: /usr/share/glvnd/egl_vendor.d/10_nvidia.json

@@ -30,13 +30,75 @@ namespace denso_robot_control
 {
 
 hardware_interface::CallbackReturn
-DensoRobotHW::on_init(const hardware_interface::HardwareInfo & info)
+DensoRobotHW::on_init(const hardware_interface::HardwareComponentInterfaceParams & params)
 {
-  if (hardware_interface::SystemInterface::on_init(info) != CallbackReturn::SUCCESS) {
+  if (hardware_interface::SystemInterface::on_init(params) != CallbackReturn::SUCCESS) {
     return CallbackReturn::ERROR;
   }
 
-  info_ = info;
+  RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "Starting DENSO robot drivers ...");
+  // TODO: do we really need this wait time ??
+  // std::this_thread::sleep_for(std::chrono::seconds(5));
+
+  // set default values for commands and states
+  for (uint i = 0; i < pos_interface_.size(); i++) {
+    if (std::isnan(pos_interface_[i])) {
+      cmd_interface_[i] = 0;
+      pos_interface_[i] = 0;
+      vel_interface_[i] = 0;
+      eff_interface_[i] = 0;
+    }
+  }
+
+  node_name_ = info_.hardware_parameters["node_name"].c_str();
+  node_namespace_ = info_.hardware_parameters["node_namespace"].c_str();
+  robot_ip_address_ = info_.hardware_parameters["ip_address"];
+  robot_name_ = info_.hardware_parameters["robot_name"];
+  robot_joints_ = std::stoi(info_.hardware_parameters["robot_joints"]);
+  ctrl_type_ = std::stoi(info_.hardware_parameters["controller_type"]);
+
+  joint_type_.resize(robot_joints_);
+  for (int i = 0; i < robot_joints_; i++) {
+    std::stringstream ss;
+    ss << "joint_" << i + 1;
+    joint_type_[i] = std::stoi(info_.hardware_parameters[ss.str()]);
+  }
+
+  arm_group_ = std::stoi(info_.hardware_parameters["arm_group"]);
+
+  send_format_ = std::stoi(info_.hardware_parameters["send_format"]);
+  recv_format_ = std::stoi(info_.hardware_parameters["recv_format"]);
+
+  std::string str_verbose = info_.hardware_parameters["verbose"];
+  verbose_ = (str_verbose == "True" || str_verbose == "true");
+  if (verbose_) {
+    RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "*******************************************");
+    RCLCPP_INFO(
+      rclcpp::get_logger("DensoRobotHW"),
+      "***** Verbose mode ON. List of parsed robot arguments :");
+    RCLCPP_INFO(
+      rclcpp::get_logger("DensoRobotHW"), "***** robot name: %s", robot_name_.c_str());
+    RCLCPP_INFO(
+      rclcpp::get_logger("DensoRobotHW"),
+      "***** controller type (8 = RC8 ; 9 = RC9): %d", ctrl_type_);
+    RCLCPP_INFO(
+      rclcpp::get_logger("DensoRobotHW"),
+      "***** robot ip address: %s", robot_ip_address_.c_str());
+    RCLCPP_INFO(
+      rclcpp::get_logger("DensoRobotHW"), "***** number of joints:  %d", robot_joints_);
+    for (int i = 0; i < robot_joints_; i++) {
+      RCLCPP_INFO(
+        rclcpp::get_logger("DensoRobotHW"),
+        "***** joint_%d type (0 = prismatic ; 1 = revolute):  %d", i + 1, joint_type_[i]);
+    }
+    RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "***** arm group: %d", arm_group_);
+    RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "***** send format: %d", send_format_);
+    RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "***** receive format: %d", recv_format_);
+    RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "*******************************************");
+  } else {
+    RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "Arguments parsed !!");
+  }
+
   pos_interface_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
   vel_interface_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
   eff_interface_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
@@ -138,79 +200,11 @@ std::vector<hardware_interface::CommandInterface> DensoRobotHW::export_command_i
 hardware_interface::CallbackReturn
 DensoRobotHW::on_activate(const rclcpp_lifecycle::State & /* previous_state */)
 {
-  RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "Starting DENSO robot drivers ...");
-  // TODO: do we really need this wait time ??
-  // std::this_thread::sleep_for(std::chrono::seconds(5));
-
-  // set default values for commands and states
-  for (uint i = 0; i < pos_interface_.size(); i++) {
-    if (std::isnan(pos_interface_[i])) {
-      cmd_interface_[i] = 0;
-      pos_interface_[i] = 0;
-      vel_interface_[i] = 0;
-      eff_interface_[i] = 0;
-    }
-  }
-
-  std::string node_name = info_.hardware_parameters["node_name"].c_str();
-  std::string node_namespace = info_.hardware_parameters["node_namespace"].c_str();
-  std::string robot_ip_address = info_.hardware_parameters["ip_address"];
-  std::string robot_name = info_.hardware_parameters["robot_name"];
-  int robot_joints = std::stoi(info_.hardware_parameters["robot_joints"]);
-  int ctrl_type = std::stoi(info_.hardware_parameters["controller_type"]);
-
-  std::vector<int> joint_type;
-  joint_type.resize(robot_joints);
-  for (int i = 0; i < robot_joints; i++) {
-    std::stringstream ss;
-    ss << "joint_" << i + 1;
-    joint_type[i] = std::stoi(info_.hardware_parameters[ss.str()]);
-  }
-
-  int arm_group = 0;
-  arm_group = std::stoi(info_.hardware_parameters["arm_group"]);
-
-  int send_format = std::stoi(info_.hardware_parameters["send_format"]);
-  int recv_format = std::stoi(info_.hardware_parameters["recv_format"]);
-
-  bool verbose = false;
-  std::string str_true = "True";
-  std::string str_verbose = info_.hardware_parameters["verbose"].c_str();
-  verbose = std::equal(
-    str_true.begin(), str_true.end(), str_verbose.begin(), str_verbose.begin() + str_true.length());
-  if (verbose) {
-    RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "*******************************************");
-    RCLCPP_INFO(
-      rclcpp::get_logger("DensoRobotHW"),
-      "***** Verbose mode ON. List of parsed robot arguments :");
-    RCLCPP_INFO(
-      rclcpp::get_logger("DensoRobotHW"), "***** robot name: %s", robot_name.c_str());
-    RCLCPP_INFO(
-      rclcpp::get_logger("DensoRobotHW"),
-      "***** controller type (8 = RC8 ; 9 = RC9): %d", ctrl_type);
-    RCLCPP_INFO(
-      rclcpp::get_logger("DensoRobotHW"),
-      "***** robot ip address: %s", robot_ip_address.c_str());
-    RCLCPP_INFO(
-      rclcpp::get_logger("DensoRobotHW"), "***** number of joints:  %d", robot_joints);
-    for (int i = 0; i < robot_joints; i++) {
-      RCLCPP_INFO(
-        rclcpp::get_logger("DensoRobotHW"),
-        "***** joint_%d type (0 = prismatic ; 1 = revolute):  %d", i + 1, joint_type[i]);
-    }
-    RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "***** arm group: %d", arm_group);
-    RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "***** send format: %d", send_format);
-    RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "***** receive format: %d", recv_format);
-    RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "*******************************************");
-  } else {
-    RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "Arguments parsed !!");
-  }
-
   drobo_ = std::make_shared<DensoRobotControl>(
-    node_name, node_namespace, robot_name, robot_ip_address, ctrl_type,
-    robot_joints, joint_type, arm_group, send_format, recv_format, verbose);
+    node_name_, node_namespace_, robot_name_, robot_ip_address_, ctrl_type_,
+    robot_joints_, joint_type_, arm_group_, send_format_, recv_format_, verbose_);
 
-  auto node = rclcpp::Node::make_shared(node_name, node_namespace);
+  auto node = rclcpp::Node::make_shared(node_name_, node_namespace_);
   drobo_->setNode(node);
 
   RCLCPP_INFO(rclcpp::get_logger("DensoRobotHW"), "Initializing drivers ...");

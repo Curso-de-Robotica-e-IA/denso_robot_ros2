@@ -107,7 +107,7 @@ bcap_calc_size_variant(const VARIANT *vnt)
             SafeArrayAccessData(vnt->parray, &pdata);
             for (i = 0; i < cnt; i++) {
               ret += BCAP_SIZE_BSTR_LEN;
-              if (((BSTR*) pdata + i) != NULL) {
+              if (pdata != NULL) {
                   ret += BCAP_SIZE_BSTR_BUFFER
                       * SysStringLen(*((BSTR*) pdata + i));
               }
@@ -118,7 +118,7 @@ bcap_calc_size_variant(const VARIANT *vnt)
             SafeArrayAccessData(vnt->parray, &pdata);
             for (i = 0; i < cnt; i++) {
               ret += BCAP_SIZE_VARIANT_TYPE + BCAP_SIZE_VARIANT_NUM;
-              if (((VARIANT*) pdata + i) != NULL) {
+              if (pdata != NULL) {
                   ret += bcap_calc_size_variant(((VARIANT*) pdata + i));
               }
             }
