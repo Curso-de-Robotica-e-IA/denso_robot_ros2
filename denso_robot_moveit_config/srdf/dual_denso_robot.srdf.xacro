@@ -6,13 +6,17 @@
   <xacro:arg name="left_basic_camera" default="true"/>
   <xacro:arg name="right_basic_camera" default="false"/>
   <xacro:arg name="right_virtual_phone" default="false"/>
+  <xacro:arg name="left_hall_touch_camera" default="false"/>
+  <xacro:arg name="right_hall_touch_camera" default="false"/>
 
   <xacro:include filename="$(find denso_robot_moveit_config)/robots/$(arg model)/srdf/denso_robot_macro.srdf.xacro"/>
 
   <!-- left arm -->
-  <xacro:denso_robot_srdf namespace="left_" basic_camera="$(arg left_basic_camera)"/>
+  <xacro:denso_robot_srdf namespace="left_" basic_camera="$(arg left_basic_camera)"
+    hall_touch_camera="$(arg left_hall_touch_camera)"/>
   <!-- right arm -->
-  <xacro:denso_robot_srdf namespace="right_" basic_camera="$(arg right_basic_camera)"/>
+  <xacro:denso_robot_srdf namespace="right_" basic_camera="$(arg right_basic_camera)"
+    hall_touch_camera="$(arg right_hall_touch_camera)"/>
 
   <group name="dual_arm">
     <group name="left_arm"/>

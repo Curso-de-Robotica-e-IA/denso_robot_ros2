@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Fusion coordinates are millimetres with the mounting face at J6.
+       The three links are the camera support, touch TCP, and left optical centre. -->
+  <xacro:macro name="hall_touch_camera" params="namespace end_effector">
+    <xacro:property name="d405_width" value="1920"/>
+    <xacro:property name="d405_height" value="1080"/>
+    <!-- rectified.0 in config/d405_calibration.json (pixels). -->
+    <xacro:property name="d405_fx" value="954.334"/>
+    <xacro:property name="d405_fy" value="954.334"/>
+    <xacro:property name="d405_cx" value="940.535"/>
+    <xacro:property name="d405_cy" value="540.252"/>
+    <xacro:property name="d405_hfov" value="1.5767158616878136"/>
+
+    <!-- Link origin is the measured camera support plane point. The mesh
+         origin is the Fusion/J6 mounting origin, hence the inverse offset. -->
+    <link name="${namespace}hall_camera_support_link">
+      <inertial>
+        <!-- Approximate assembly dynamics; the STL contains no mass data. -->
+        <origin xyz="0 0.05 0.02"/>
+        <mass value="0.16"/>
+        <inertia ixx="0.0002" ixy="0" ixz="0"
+                 iyy="0.0002" iyz="0" izz="0.0002"/>
+      </inertial>
+      <visual>
+        <origin xyz="0 0.05 -0.0355"/>
+        <geometry>
+          <mesh filename="file:///$(find denso_robot_descriptions)/tools/hall_touch_camera/meshes/HallToucher_Camera.stl"
+                scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="${namespace}hall_touch_material">
+          <color rgba="0.65 0.65 0.68 1"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0.05 -0.0355"/>
+        <geometry>
+          <mesh filename="file:///$(find denso_robot_descriptions)/tools/hall_touch_camera/meshes/HallToucher_Camera.stl"
+                scale="0.001 0.001 0.001"/>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="${namespace}hall_camera_support_joint" type="fixed">
+      <parent link="${namespace}${end_effector}"/>
+      <child link="${namespace}hall_camera_support_link"/>
+      <origin xyz="0 -0.05 0.0355" rpy="0 0 0"/>
+    </joint>
+
+    <!-- Keep the existing TCP frame name for motion clients. -->
+    <link name="${namespace}calib_link"/>
+    <joint name="${namespace}calib_joint" type="fixed">
+      <parent link="${namespace}hall_camera_support_link"/>
+      <child link="${namespace}calib_link"/>
+      <origin xyz="0 0.05 0.070487" rpy="0 0 0"/>
+    </joint>
+
+    <!-- Nominal D405 left imager: half the 18.047 mm stereo baseline in
+         tool -X, and 3.8 mm behind a 23 mm camera mounted on the support.
+         The factory calibration does not contain this mounting extrinsic.
+         Optical axes: +X image right, +Y image down, +Z out of the camera. -->
+    <link name="${namespace}hall_camera_optical_frame"/>
+    <joint name="${namespace}hall_camera_optical_joint" type="fixed">
+      <parent link="${namespace}hall_camera_support_link"/>
+      <child link="${namespace}hall_camera_optical_frame"/>
+      <origin xyz="-0.0090235 0 0.0192" rpy="0 0 ${pi}"/>
+    </joint>
+
+    <xacro:macro name="hall_d405_sensor" params="sensor_name sensor_type topic near far info_topic">
+      <sensor name="${sensor_name}" type="${sensor_type}">
+        <!-- Gazebo camera +X is forward; the ROS optical frame uses +Z.
+             The STL front intersects the central ray at support Z = 0.02293 m.
+             Render about 1 mm in front so it cannot occlude its own image. -->
+        <pose>-0.0090235 0 0.024 ${-pi/2} ${-pi/2} 0</pose>
+        <always_on>true</always_on>
+        <update_rate>30</update_rate>
+        <visualize>true</visualize>
+        <topic>${topic}</topic>
+        <gz_frame_id>${namespace}hall_camera_optical_frame</gz_frame_id>
+        <camera>
+          <horizontal_fov>${d405_hfov}</horizontal_fov>
+          <image>
+            <width>${d405_width}</width>
+            <height>${d405_height}</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip><near>${near}</near><far>${far}</far></clip>
+          <lens>
+            <type>gnomonical</type>
+            <intrinsics>
+              <fx>${d405_fx}</fx><fy>${d405_fy}</fy>
+              <cx>${d405_cx}</cx><cy>${d405_cy}</cy><s>0</s>
+            </intrinsics>
+            <projection>
+              <p_fx>${d405_fx}</p_fx><p_fy>${d405_fy}</p_fy>
+              <p_cx>${d405_cx}</p_cx><p_cy>${d405_cy}</p_cy>
+              <tx>0</tx><ty>0</ty>
+            </projection>
+          </lens>
+          <optical_frame_id>${namespace}hall_camera_optical_frame</optical_frame_id>
+          <camera_info_topic>${info_topic}</camera_info_topic>
+        </camera>
+      </sensor>
+    </xacro:macro>
+
+    <gazebo reference="${namespace}hall_camera_support_link">
+      <xacro:hall_d405_sensor sensor_name="${namespace}hall_camera" sensor_type="camera"
+        topic="${namespace}hall_camera" near="0.005" far="100"
+        info_topic="${namespace}hall_camera/camera_info"/>
+      <xacro:hall_d405_sensor sensor_name="${namespace}hall_depth" sensor_type="depth_camera"
+        topic="${namespace}hall_camera/depth/image_raw" near="0.07" far="0.5"
+        info_topic="${namespace}hall_camera/depth/camera_info"/>
+    </gazebo>
+  </xacro:macro>
+</robot>

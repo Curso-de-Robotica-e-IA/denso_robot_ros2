@@ -2,6 +2,9 @@
 
 The `basic_camera` option now loads the [touch tool with RealSense D405](basic_camera/README.md), including its 50 mm TCP and simulated RGB/depth sensors.
 
+The separate [Hall touch tool with D405](hall_touch_camera/README.md) uses the
+supplied Fusion geometry, 105.987 mm TCP, and 1920 × 1080 factory calibration.
+
 ## Quick Start
 
 Build the updated description / bringup packages:

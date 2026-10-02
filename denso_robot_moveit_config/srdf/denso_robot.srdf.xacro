@@ -6,9 +6,12 @@
   <!-- parameters -->
   <xacro:arg name="namespace" default="" />
   <xacro:arg name="calib_tool" default="false" />
+  <xacro:arg name="basic_camera" default="false" />
+  <xacro:arg name="hall_touch_camera" default="false" />
 
   <xacro:include filename="$(find denso_robot_moveit_config)/robots/$(arg model)/srdf/denso_robot_macro.srdf.xacro"/>
 
-  <xacro:denso_robot_srdf namespace="$(arg namespace)" calib_tool="$(arg calib_tool)"/>
+  <xacro:denso_robot_srdf namespace="$(arg namespace)" calib_tool="$(arg calib_tool)"
+    basic_camera="$(arg basic_camera)" hall_touch_camera="$(arg hall_touch_camera)"/>
 
 </robot>

@@ -172,6 +172,11 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
+            'hall_touch_camera', default_value='false',
+            description='Attach the Hall touch tool with calibrated D405 to J6'
+        ))
+    declared_arguments.append(
+        DeclareLaunchArgument(
             'calib_tool', default_value='false',
             description='Add calib tool in J6'
         ))
@@ -257,6 +262,7 @@ def generate_launch_description():
     sim = LaunchConfiguration('sim')
     gazebo_args = LaunchConfiguration('gazebo_args')
     basic_camera = LaunchConfiguration('basic_camera')
+    hall_touch_camera = LaunchConfiguration('hall_touch_camera')
     calib_tool = LaunchConfiguration('calib_tool')
     calib_xyz = LaunchConfiguration('calib_xyz')
     calib_rpy = LaunchConfiguration('calib_rpy')
@@ -295,6 +301,7 @@ def generate_launch_description():
             'verbose:=', verbose, ' ',
             'sim:=', sim, ' ',
             'basic_camera:=', basic_camera, ' ',
+            'hall_touch_camera:=', hall_touch_camera, ' ',
             'calib_tool:=', calib_tool, ' ',
             'calib_xyz:="', calib_xyz, '" ',
             'calib_rpy:="', calib_rpy, '" ',
@@ -323,6 +330,8 @@ def generate_launch_description():
             'model:=', denso_robot_model, ' ',
             'namespace:=', namespace, ' ',
             'calib_tool:=', calib_tool, ' ',
+            'basic_camera:=', basic_camera, ' ',
+            'hall_touch_camera:=', hall_touch_camera, ' ',
             'calib_mesh_xyz:="', calib_mesh_xyz, '" ',
             'calib_mesh_rpy:="', calib_mesh_rpy, '" '
         ])
@@ -501,7 +510,8 @@ def generate_launch_description():
         executable='image_bridge',
         arguments=[['/', namespace, 'basic_camera'], ['/', namespace, 'basic_camera/depth/image_raw']],
         output='screen',
-        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", basic_camera, "' == 'true'"]))
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", basic_camera,
+                                               "' == 'true' and '", hall_touch_camera, "' != 'true'"]))
     )
 
     ros_gz_camera_info_bridge = Node(
@@ -512,7 +522,24 @@ def generate_launch_description():
             ['/', namespace, 'basic_camera/depth/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'],
         ],
         output='screen',
-        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", basic_camera, "' == 'true'"]))
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", basic_camera,
+                                               "' == 'true' and '", hall_touch_camera, "' != 'true'"]))
+    )
+
+    hall_ros_gz_image_bridge = Node(
+        package='ros_gz_image', executable='image_bridge',
+        arguments=[['/', namespace, 'hall_camera'], ['/', namespace, 'hall_camera/depth/image_raw']],
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", hall_touch_camera, "' == 'true'"]))
+    )
+    hall_ros_gz_camera_info_bridge = Node(
+        package='ros_gz_bridge', executable='parameter_bridge',
+        arguments=[
+            ['/', namespace, 'hall_camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'],
+            ['/', namespace, 'hall_camera/depth/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo'],
+        ],
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", hall_touch_camera, "' == 'true'"]))
     )
 
     # Get parameters for the Servo node
@@ -546,6 +573,8 @@ def generate_launch_description():
         spawn_entity,
         ros_gz_image_bridge,
         ros_gz_camera_info_bridge,
+        hall_ros_gz_image_bridge,
+        hall_ros_gz_camera_info_bridge,
         robot_state_publisher_node,
         joint_state_broadcaster_spawner,
         servo_node

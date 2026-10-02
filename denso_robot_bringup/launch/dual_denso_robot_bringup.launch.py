@@ -184,6 +184,12 @@ def generate_launch_description():
             description='Attach the touch tool with RealSense D405 to right J6'
         ))
     declared_arguments.append(
+        DeclareLaunchArgument('left_hall_touch_camera', default_value='false',
+                              description='Attach the Hall touch/D405 tool to left J6'))
+    declared_arguments.append(
+        DeclareLaunchArgument('right_hall_touch_camera', default_value='false',
+                              description='Attach the Hall touch/D405 tool to right J6'))
+    declared_arguments.append(
         DeclareLaunchArgument(
             'left_cellphone_holder', default_value='false',
             description='Add cellphone holder AprilTag markers in left J6'
@@ -287,6 +293,8 @@ def generate_launch_description():
     use_servo = LaunchConfiguration('use_servo')
     left_basic_camera = LaunchConfiguration('left_basic_camera')
     right_basic_camera = LaunchConfiguration('right_basic_camera')
+    left_hall_touch_camera = LaunchConfiguration('left_hall_touch_camera')
+    right_hall_touch_camera = LaunchConfiguration('right_hall_touch_camera')
     left_cellphone_holder = LaunchConfiguration('left_cellphone_holder')
     right_cellphone_holder = LaunchConfiguration('right_cellphone_holder')
     right_virtual_phone = LaunchConfiguration('right_virtual_phone')
@@ -331,6 +339,8 @@ def generate_launch_description():
             'sim:=', sim, ' ',
             'left_basic_camera:=', left_basic_camera, ' ',
             'right_basic_camera:=', right_basic_camera, ' ',
+            'left_hall_touch_camera:=', left_hall_touch_camera, ' ',
+            'right_hall_touch_camera:=', right_hall_touch_camera, ' ',
             'left_cellphone_holder:=', left_cellphone_holder, ' ',
             'right_cellphone_holder:=', right_cellphone_holder, ' ',
             'right_virtual_phone:=', right_virtual_phone, ' ',
@@ -363,6 +373,8 @@ def generate_launch_description():
             'namespace:=', namespace, ' ',
             'left_basic_camera:=', left_basic_camera, ' ',
             'right_basic_camera:=', right_basic_camera, ' ',
+            'left_hall_touch_camera:=', left_hall_touch_camera, ' ',
+            'right_hall_touch_camera:=', right_hall_touch_camera, ' ',
             'right_virtual_phone:=', right_virtual_phone, ' '
         ])
     robot_description_semantic = {'robot_description_semantic': ParameterValue(robot_description_semantic_content, value_type=str)}
@@ -552,7 +564,8 @@ def generate_launch_description():
         executable='image_bridge',
         arguments=['/left_basic_camera', '/left_basic_camera/depth/image_raw'],
         output='screen',
-        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", left_basic_camera, "' == 'true'"]))
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", left_basic_camera,
+                                               "' == 'true' and '", left_hall_touch_camera, "' != 'true'"]))
     )
 
     right_ros_gz_image_bridge = Node(
@@ -560,7 +573,8 @@ def generate_launch_description():
         executable='image_bridge',
         arguments=['/right_basic_camera', '/right_basic_camera/depth/image_raw'],
         output='screen',
-        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", right_basic_camera, "' == 'true'"]))
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", right_basic_camera,
+                                               "' == 'true' and '", right_hall_touch_camera, "' != 'true'"]))
     )
 
     left_ros_gz_camera_info_bridge = Node(
@@ -571,7 +585,8 @@ def generate_launch_description():
             '/left_basic_camera/depth/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
         ],
         output='screen',
-        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", left_basic_camera, "' == 'true'"]))
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", left_basic_camera,
+                                               "' == 'true' and '", left_hall_touch_camera, "' != 'true'"]))
     )
 
     right_ros_gz_camera_info_bridge = Node(
@@ -582,7 +597,39 @@ def generate_launch_description():
             '/right_basic_camera/depth/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
         ],
         output='screen',
-        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", right_basic_camera, "' == 'true'"]))
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", right_basic_camera,
+                                               "' == 'true' and '", right_hall_touch_camera, "' != 'true'"]))
+    )
+
+    left_hall_image_bridge = Node(
+        package='ros_gz_image', executable='image_bridge',
+        arguments=['/left_hall_camera', '/left_hall_camera/depth/image_raw'],
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", left_hall_touch_camera, "' == 'true'"]))
+    )
+    right_hall_image_bridge = Node(
+        package='ros_gz_image', executable='image_bridge',
+        arguments=['/right_hall_camera', '/right_hall_camera/depth/image_raw'],
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", right_hall_touch_camera, "' == 'true'"]))
+    )
+    left_hall_info_bridge = Node(
+        package='ros_gz_bridge', executable='parameter_bridge',
+        arguments=[
+            '/left_hall_camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            '/left_hall_camera/depth/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+        ],
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", left_hall_touch_camera, "' == 'true'"]))
+    )
+    right_hall_info_bridge = Node(
+        package='ros_gz_bridge', executable='parameter_bridge',
+        arguments=[
+            '/right_hall_camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            '/right_hall_camera/depth/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+        ],
+        output='screen',
+        condition=IfCondition(PythonExpression(["'", sim, "' == 'true' and '", right_hall_touch_camera, "' == 'true'"]))
     )
 
     # Get parameters for the Servo node
@@ -649,6 +696,10 @@ def generate_launch_description():
         left_ros_gz_camera_info_bridge,
         right_ros_gz_image_bridge,
         right_ros_gz_camera_info_bridge,
+        left_hall_image_bridge,
+        left_hall_info_bridge,
+        right_hall_image_bridge,
+        right_hall_info_bridge,
         robot_state_publisher_node,
         joint_state_broadcaster_spawner,
         left_servo_node,
