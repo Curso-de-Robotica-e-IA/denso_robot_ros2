@@ -125,6 +125,9 @@ public:
       approach_distance_m_ = sim_touch_approach_distance_m_;
     }
     touch_speed_mps_ = declare_parameter<double>("touch_speed_mps", 0.005);
+    touch_retract_speed_mps_ = declare_parameter<double>("touch_retract_speed_mps", 0.005);
+    touch_retract_distance_m_ = declare_parameter<double>("touch_retract_distance_m", 0.005);
+    touch_dwell_sec_ = declare_parameter<double>("touch_dwell_sec", 0.0);
     touch_max_travel_m_ = declare_parameter<double>("touch_max_travel_m", 0.035);
     touch_timeout_sec_ = declare_parameter<double>("touch_timeout_sec", 10.0);
     max_touch_xy_error_m_ = declare_parameter<double>("max_touch_xy_error_m", 0.005);
@@ -134,7 +137,13 @@ public:
       !std::isfinite(velocity_) || velocity_ <= 0.0 || velocity_ > 1.0 ||
       !std::isfinite(acceleration_) || acceleration_ <= 0.0 || acceleration_ > 1.0 ||
       !std::isfinite(detection_timeout_sec_) || detection_timeout_sec_ <= 0.0 ||
-      !std::isfinite(touch_speed_mps_) || touch_speed_mps_ <= 0.0 || touch_speed_mps_ > 0.02 ||
+      !std::isfinite(touch_speed_mps_) || touch_speed_mps_ <= 0.0 ||
+      touch_speed_mps_ > (sim_ ? 0.05 : 0.02) ||
+      !std::isfinite(touch_retract_speed_mps_) || touch_retract_speed_mps_ <= 0.0 ||
+      touch_retract_speed_mps_ > (sim_ ? 0.10 : 0.03) ||
+      !std::isfinite(touch_retract_distance_m_) || touch_retract_distance_m_ <= 0.0 ||
+      touch_retract_distance_m_ > 0.05 || !std::isfinite(touch_dwell_sec_) ||
+      touch_dwell_sec_ < 0.0 || touch_dwell_sec_ > 5.0 ||
       !std::isfinite(touch_max_travel_m_) || touch_max_travel_m_ <= 0.0 ||
       touch_max_travel_m_ > 0.05 || !std::isfinite(touch_timeout_sec_) ||
       touch_timeout_sec_ <= 0.0 || touch_timeout_sec_ > 30.0 ||
@@ -188,8 +197,15 @@ public:
       touch_subscription_ = create_subscription<std_msgs::msg::Bool>(
         "/touch_detected", 10,
         [this](const std_msgs::msg::Bool::SharedPtr msg) {
-          touch_detected_.store(msg->data);
+          std::lock_guard<std::mutex> lock(servo_command_mutex_);
+          const bool was_touching = touch_detected_.exchange(msg->data);
           last_touch_ms_.store(steady_ms());
+          if (msg->data && !was_touching) {
+            geometry_msgs::msg::TwistStamped stop;
+            stop.header.stamp = now();
+            stop.header.frame_id = "world";
+            servo_publisher_->publish(stop);
+          }
         }, options);
       servo_status_subscription_ = create_subscription<std_msgs::msg::Int8>(
         "/left_servo_node/status", 10,
@@ -505,13 +521,17 @@ private:
     RCLCPP_INFO(get_logger(), "Touch %s: tip starts %.1f mm from holder plane",
       color.c_str(), start_z * 1000.0);
 
-    const auto command = [this, &direction](double sign) {
+    const auto command = [this, &direction](double speed_mps) {
+        std::lock_guard<std::mutex> lock(servo_command_mutex_);
+        if (speed_mps > 0.0 && touch_detected_.load()) {
+          speed_mps = 0.0;
+        }
         geometry_msgs::msg::TwistStamped twist;
         twist.header.stamp = now();
         twist.header.frame_id = "world";
-        twist.twist.linear.x = sign * touch_speed_mps_ * direction.x();
-        twist.twist.linear.y = sign * touch_speed_mps_ * direction.y();
-        twist.twist.linear.z = sign * touch_speed_mps_ * direction.z();
+        twist.twist.linear.x = speed_mps * direction.x();
+        twist.twist.linear.y = speed_mps * direction.y();
+        twist.twist.linear.z = speed_mps * direction.z();
         servo_publisher_->publish(twist);
       };
     const auto halt = [&command]() {
@@ -529,29 +549,37 @@ private:
     bool contact_seen = false;
     const auto started_ms = steady_ms();
     const auto deadline = started_ms + static_cast<int64_t>(touch_timeout_sec_ * 1000.0);
-    try {
-      while (rclcpp::ok() && steady_ms() < deadline) {
+    const auto safe_to_move = [this, &tip_z, start_z, started_ms]() {
         const auto status = servo_status_.load();
         if (status == 2 || status == 4 || status == 5) {
           RCLCPP_ERROR(get_logger(), "Touch stopped by MoveIt Servo status %d", status);
-          break;
+          return false;
         }
         if (steady_ms() - started_ms > 500 &&
           steady_ms() - last_servo_status_ms_.load() > 500)
         {
           RCLCPP_ERROR(get_logger(), "Touch stopped: Servo status is stale");
-          break;
+          return false;
         }
         if (steady_ms() - last_touch_ms_.load() > 500) {
           RCLCPP_ERROR(get_logger(), "Touch stopped: contact signal is stale");
-          break;
+          return false;
         }
         if (start_z - tip_z() > touch_max_travel_m_) {
           RCLCPP_ERROR(get_logger(), "Touch stopped: travel limit reached");
-          break;
+          return false;
         }
+        return true;
+      };
+    try {
+      while (rclcpp::ok() && steady_ms() < deadline) {
         if (touch_detected_.load()) {
           contact_seen = true;
+          halt();  // Stop the advance before any TF lookup or contact logging.
+          if (steady_ms() - last_touch_ms_.load() > 500) {
+            RCLCPP_ERROR(get_logger(), "Touch stopped: contact signal is stale");
+            break;
+          }
           const auto tip = tf_buffer_->lookupTransform(holder_frame_, end_effector_link_,
             tf2::TimePointZero, tf2::durationFromSec(0.2)).transform.translation;
           const double error = std::hypot(
@@ -560,24 +588,49 @@ private:
           touched = error <= max_touch_xy_error_m_;
           break;
         }
-        command(1.0);
+        if (!safe_to_move()) {
+          break;
+        }
+        command(touch_speed_mps_);
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
       }
-      halt();
+      if (!contact_seen) {
+        halt();
+      }
       RCLCPP_INFO(get_logger(), "Touch probe: tip %.1f mm from holder plane, contact=%s",
         tip_z() * 1000.0, touched ? "true" : "false");
       if (contact_seen) {
         const double contact_z = tip_z();
+        const double retract_target_z = std::max(
+          start_z, contact_z + touch_retract_distance_m_);
+        bool retract_ok = true;
+        const auto dwell_deadline = steady_ms() + static_cast<int64_t>(touch_dwell_sec_ * 1000.0);
+        while (touched && rclcpp::ok() && steady_ms() < dwell_deadline) {
+          if (!safe_to_move()) {
+            retract_ok = false;
+            break;
+          }
+          command(0.0);
+          std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
         const auto retract_deadline = steady_ms() + static_cast<int64_t>(touch_timeout_sec_ * 1000.0);
-        while (rclcpp::ok() && steady_ms() < retract_deadline && tip_z() < start_z - 0.002) {
+        while (retract_ok && rclcpp::ok() && steady_ms() < retract_deadline &&
+          tip_z() < retract_target_z - 0.002)
+        {
+          if (!safe_to_move()) {
+            retract_ok = false;
+            break;
+          }
           if (tip_z() < contact_z - 0.003) {
+            RCLCPP_ERROR(get_logger(), "Touch stopped: unexpected motion toward the phone");
+            retract_ok = false;
             break;  // Unexpected motion direction: stop before moving farther into the phone.
           }
-          command(-1.0);
+          command(-touch_retract_speed_mps_);
           std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
         halt();
-        touched = touched && tip_z() >= start_z - 0.002;
+        touched = touched && retract_ok && tip_z() >= retract_target_z - 0.002;
       }
     } catch (const tf2::TransformException & error) {
       halt();
@@ -592,9 +645,14 @@ private:
       RCLCPP_ERROR(get_logger(), "Touch/retract failed; no further robot movement will be planned");
       return false;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    if (steady_ms() - last_joint_ms_.load() > 500) {
-      RCLCPP_ERROR(get_logger(), "Joint state is stale after touch");
+    const auto paused_ms = steady_ms();
+    while (rclcpp::ok() && last_joint_ms_.load() <= paused_ms &&
+      steady_ms() - paused_ms < 500)
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    if (last_joint_ms_.load() <= paused_ms) {
+      RCLCPP_ERROR(get_logger(), "No fresh joint state after touch");
       return false;
     }
     {
@@ -671,6 +729,9 @@ private:
   double acceleration_;
   double detection_timeout_sec_;
   double touch_speed_mps_;
+  double touch_retract_speed_mps_;
+  double touch_retract_distance_m_;
+  double touch_dwell_sec_;
   double touch_max_travel_m_;
   double touch_timeout_sec_;
   double max_touch_xy_error_m_;
@@ -680,6 +741,7 @@ private:
   std::atomic<int64_t> last_servo_status_ms_{0};
   std::atomic<int64_t> last_joint_ms_{0};
   std::mutex joint_mutex_;
+  std::mutex servo_command_mutex_;
   double calibration_x_m_;
   double calibration_y_m_;
   std::vector<Target> targets_;

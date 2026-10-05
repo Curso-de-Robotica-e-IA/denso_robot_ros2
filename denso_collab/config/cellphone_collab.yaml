@@ -15,7 +15,10 @@ move_to_screen_standoff:
     velocity_scaling: 1.0
     acceleration_scaling: 1.0
     detection_timeout_sec: 45.0
-    touch_speed_mps: 0.010
+    touch_speed_mps: 0.020
+    touch_retract_speed_mps: 0.1
+    touch_retract_distance_m: 0.030
+    touch_dwell_sec: 0.0
     touch_max_travel_m: 0.035
     touch_timeout_sec: 30.0
     max_touch_xy_error_m: 0.005
