@@ -93,7 +93,7 @@
     
     <!-- ros2 control instance -->
     <xacro:denso_robot_ros2_control
-      name="GazeboSystem" namespace="${namespace}"
+      name="${'GazeboSystem' if sim else 'DensoSystem'}" namespace="${namespace}"
       sim="$(arg sim)"
       model="$(arg model)"
       ip_address="${ip_address}"
