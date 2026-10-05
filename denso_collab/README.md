@@ -131,14 +131,18 @@ supervised physical touch test, set `touch_disable_collision_check:=true`:
 ros2 launch denso_collab screen_approach.launch.py \
   image_source:=realsense image_topic:=/left_basic_camera \
   use_random_holder_pose:=false approach_plan_only:=false \
-  touch_enabled:=true touch_disable_collision_check:=true sim:=false
+  touch_enabled:=true touch_disable_collision_check:=true \
+  max_targets:=1 sim:=false
 ```
 
 That flag sets `moveit_servo.check_collisions` to `false` only while the
 straight, bounded Hall probe is advancing, then pauses Servo and restores
 collision checking before the launch continues or exits. Singularity, joint
 limit, 35 mm travel, 30 s timeout, and Hall contact checks stay active. Keep
-hands clear and run one target (`test_runs:=1`) under supervision.
+hands clear and run one target under supervision.
+`max_targets:=1` makes this initial run stop after the first ordered target
+(red in the current layout); the default `max_targets:=0` runs every detected
+target.
 In simulation with touch enabled, the standoff is 15 mm from the holder plane;
 the normal approach remains 30 mm. The simulated phone is another robot link,
 so the bringup selects a 1 mm Servo **self-collision proximity** margin only in

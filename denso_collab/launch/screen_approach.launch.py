@@ -71,6 +71,8 @@ def _start_tests(context):
                     LaunchConfiguration('touch_enabled'), value_type=bool),
                 'touch_disable_collision_check': ParameterValue(
                     LaunchConfiguration('touch_disable_collision_check'), value_type=bool),
+                'max_targets': ParameterValue(
+                    LaunchConfiguration('max_targets'), value_type=int),
                 'sim': ParameterValue(LaunchConfiguration('sim'), value_type=bool),
             }],
         )
@@ -112,5 +114,6 @@ def generate_launch_description():
         DeclareLaunchArgument('sim', default_value='false'),
         DeclareLaunchArgument('touch_enabled', default_value='false'),
         DeclareLaunchArgument('touch_disable_collision_check', default_value='false'),
+        DeclareLaunchArgument('max_targets', default_value='0'),
         OpaqueFunction(function=_start_tests),
     ])

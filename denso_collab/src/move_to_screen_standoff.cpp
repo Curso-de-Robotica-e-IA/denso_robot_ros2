@@ -121,6 +121,7 @@ public:
     velocity_ = declare_parameter<double>("velocity_scaling");
     acceleration_ = declare_parameter<double>("acceleration_scaling");
     detection_timeout_sec_ = declare_parameter<double>("detection_timeout_sec");
+    max_targets_ = declare_parameter<int>("max_targets", 0);
     touch_enabled_ = declare_parameter<bool>("touch_enabled", false);
     touch_disable_collision_check_ = declare_parameter<bool>(
       "touch_disable_collision_check", false);
@@ -140,6 +141,7 @@ public:
       !std::isfinite(velocity_) || velocity_ <= 0.0 || velocity_ > 1.0 ||
       !std::isfinite(acceleration_) || acceleration_ <= 0.0 || acceleration_ > 1.0 ||
       !std::isfinite(detection_timeout_sec_) || detection_timeout_sec_ <= 0.0 ||
+      max_targets_ < 0 ||
       !std::isfinite(touch_speed_mps_) || touch_speed_mps_ <= 0.0 ||
       touch_speed_mps_ > (sim_ ? 0.05 : 0.02) ||
       !std::isfinite(touch_retract_speed_mps_) || touch_retract_speed_mps_ <= 0.0 ||
@@ -377,6 +379,9 @@ private:
     std::sort(incoming.begin(), incoming.end(), [](const Target & a, const Target & b) {
       return a.pixel_y == b.pixel_y ? a.pixel_x < b.pixel_x : a.pixel_y < b.pixel_y;
     });
+    if (max_targets_ > 0 && incoming.size() > static_cast<std::size_t>(max_targets_)) {
+      incoming.resize(static_cast<std::size_t>(max_targets_));
+    }
     targets_ = std::move(incoming);
     for (std::size_t index = 0; index < targets_.size(); ++index) {
       const auto & target = targets_[index];
@@ -778,6 +783,7 @@ private:
   double velocity_;
   double acceleration_;
   double detection_timeout_sec_;
+  int max_targets_;
   double touch_speed_mps_;
   double touch_retract_speed_mps_;
   double touch_retract_distance_m_;
