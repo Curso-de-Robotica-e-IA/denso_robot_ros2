@@ -117,12 +117,28 @@ run this launch with `sim:=true touch_enabled:=true`. The launch publishes
 `/touch_detected` (`std_msgs/Bool`) from a geometric tip-to-screen check; it
 fails closed if the screen TF is missing. For real hardware, use `sim:=false
 touch_enabled:=true` and have the ESP32 bridge publish the same boolean topic;
-the sensor's hardware protocol is not implemented here. Touch approaches at
-20 mm/s, stops on contact, then retracts 30 mm at 30 mm/s;
+the sensor's hardware protocol is not implemented here. The physical probe
+approaches at 5 mm/s, stops on contact, then retracts 30 mm at 30 mm/s;
 `touch_dwell_sec: 0.0` adds no wait after the controlled stop. These values,
 the 35 mm approach travel bound, and the 30 s timeout are configured in
 `cellphone_collab.yaml`. The real mode accepts at most 20 mm/s approach and
 30 mm/s retraction.
+The holder mesh represents the backing behind the physical phone. Its ordinary
+collision margin prevents the Hall tip from reaching the glass. For a
+supervised physical touch test, set `touch_disable_collision_check:=true`:
+
+```bash
+ros2 launch denso_collab screen_approach.launch.py \
+  image_source:=realsense image_topic:=/left_basic_camera \
+  use_random_holder_pose:=false approach_plan_only:=false \
+  touch_enabled:=true touch_disable_collision_check:=true sim:=false
+```
+
+That flag sets `moveit_servo.check_collisions` to `false` only while the
+straight, bounded Hall probe is advancing, then pauses Servo and restores
+collision checking before the launch continues or exits. Singularity, joint
+limit, 35 mm travel, 30 s timeout, and Hall contact checks stay active. Keep
+hands clear and run one target (`test_runs:=1`) under supervision.
 In simulation with touch enabled, the standoff is 15 mm from the holder plane;
 the normal approach remains 30 mm. The simulated phone is another robot link,
 so the bringup selects a 1 mm Servo **self-collision proximity** margin only in

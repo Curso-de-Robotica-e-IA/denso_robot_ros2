@@ -17,6 +17,7 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <rcl_interfaces/srv/get_parameters.hpp>
+#include <rcl_interfaces/srv/set_parameters.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
@@ -121,6 +122,8 @@ public:
     acceleration_ = declare_parameter<double>("acceleration_scaling");
     detection_timeout_sec_ = declare_parameter<double>("detection_timeout_sec");
     touch_enabled_ = declare_parameter<bool>("touch_enabled", false);
+    touch_disable_collision_check_ = declare_parameter<bool>(
+      "touch_disable_collision_check", false);
     if (sim_ && touch_enabled_) {
       approach_distance_m_ = sim_touch_approach_distance_m_;
     }
@@ -222,6 +225,8 @@ public:
         "/left_servo_node/pause_servo", rmw_qos_profile_services_default, touch_group_);
       servo_unpause_client_ = create_client<std_srvs::srv::Trigger>(
         "/left_servo_node/unpause_servo", rmw_qos_profile_services_default, touch_group_);
+      servo_parameters_client_ = create_client<rcl_interfaces::srv::SetParameters>(
+        "/left_servo_node/set_parameters", rmw_qos_profile_services_default, touch_group_);
     }
   }
 
@@ -250,6 +255,31 @@ private:
       RCLCPP_ERROR(get_logger(), "MoveIt Servo %s failed", paused ? "pause" : "unpause");
       return false;
     }
+    return true;
+  }
+
+  bool set_servo_collision_check(bool enabled)
+  {
+    if (!servo_parameters_client_->wait_for_service(std::chrono::seconds(2))) {
+      RCLCPP_ERROR(get_logger(), "MoveIt Servo parameter service is unavailable");
+      return false;
+    }
+    auto request = std::make_shared<rcl_interfaces::srv::SetParameters::Request>();
+    request->parameters.push_back(
+      rclcpp::Parameter("moveit_servo.check_collisions", enabled).to_parameter_msg());
+    auto future = servo_parameters_client_->async_send_request(request);
+    if (future.wait_for(std::chrono::seconds(2)) != std::future_status::ready) {
+      RCLCPP_ERROR(get_logger(), "Timed out setting MoveIt Servo collision checking");
+      return false;
+    }
+    const auto response = future.get();
+    if (response->results.size() != 1 || !response->results.front().successful) {
+      RCLCPP_ERROR(get_logger(), "MoveIt Servo rejected collision-check setting: %s",
+        response->results.empty() ? "no result" : response->results.front().reason.c_str());
+      return false;
+    }
+    RCLCPP_INFO(get_logger(), "MoveIt Servo collision checking %s for Hall probe",
+      enabled ? "enabled" : "disabled");
     return true;
   }
 
@@ -545,6 +575,22 @@ private:
           tf2::TimePointZero, tf2::durationFromSec(0.2)).transform.translation.z;
       };
 
+    bool collision_check_disabled = false;
+    if (touch_disable_collision_check_) {
+      if (!set_servo_collision_check(false)) {
+        set_servo_paused(true);
+        return false;
+      }
+      collision_check_disabled = true;
+    }
+    const auto restore_collision_check = [this, &collision_check_disabled]() {
+        if (!collision_check_disabled) {
+          return true;
+        }
+        collision_check_disabled = false;
+        return set_servo_collision_check(true);
+      };
+
     bool touched = false;
     bool contact_seen = false;
     const auto started_ms = steady_ms();
@@ -635,10 +681,13 @@ private:
     } catch (const tf2::TransformException & error) {
       halt();
       set_servo_paused(true);
+      restore_collision_check();
       RCLCPP_ERROR(get_logger(), "Touch transform failed: %s", error.what());
       return false;
     }
-    if (!set_servo_paused(true)) {
+    const bool paused = set_servo_paused(true);
+    const bool collision_check_restored = restore_collision_check();
+    if (!paused || !collision_check_restored) {
       return false;
     }
     if (!touched) {
@@ -710,6 +759,7 @@ private:
   bool started_{false};
   bool plan_only_{false};
   bool touch_enabled_{false};
+  bool touch_disable_collision_check_{false};
   bool sim_{false};
   bool servo_started_{false};
   bool succeeded_{false};
@@ -761,6 +811,7 @@ private:
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr servo_start_client_;
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr servo_pause_client_;
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr servo_unpause_client_;
+  rclcpp::Client<rcl_interfaces::srv::SetParameters>::SharedPtr servo_parameters_client_;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
   std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_;

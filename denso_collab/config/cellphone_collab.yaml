@@ -15,7 +15,9 @@ move_to_screen_standoff:
     velocity_scaling: 1.0
     acceleration_scaling: 1.0
     detection_timeout_sec: 45.0
-    touch_speed_mps: 0.020
+    # The physical Hall probe runs at 5 mm/s.  Its contact bridge stops it
+    # before the 35 mm travel limit.
+    touch_speed_mps: 0.005
     touch_retract_speed_mps: 0.030
     touch_retract_distance_m: 0.030
     touch_dwell_sec: 0.0
