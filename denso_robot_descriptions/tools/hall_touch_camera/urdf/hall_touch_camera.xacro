@@ -43,7 +43,8 @@
     <joint name="${namespace}hall_camera_support_joint" type="fixed">
       <parent link="${namespace}${end_effector}"/>
       <child link="${namespace}hall_camera_support_link"/>
-      <origin xyz="0 -0.05 0.0355" rpy="0 0 0"/>
+      <!-- Rotate the whole assembly about the J6 mounting origin. -->
+      <origin xyz="0 0.05 0.0355" rpy="0 0 ${pi}"/>
     </joint>
 
     <!-- Keep the existing TCP frame name for motion clients. -->
@@ -62,20 +63,34 @@
     <joint name="${namespace}hall_camera_optical_joint" type="fixed">
       <parent link="${namespace}hall_camera_support_link"/>
       <child link="${namespace}hall_camera_optical_frame"/>
-      <origin xyz="-0.0090235 0 0.0192" rpy="0 0 ${pi}"/>
+      <origin xyz="-0.0090235 0 0.0192" rpy="0 0 0"/>
     </joint>
 
-    <xacro:macro name="hall_d405_sensor" params="sensor_name sensor_type topic near far info_topic">
+    <!-- Motion clients use the D405 depth frame name from the older tool. -->
+    <link name="${namespace}camera_depth_optical_frame"/>
+    <joint name="${namespace}camera_depth_optical_joint" type="fixed">
+      <parent link="${namespace}hall_camera_optical_frame"/>
+      <child link="${namespace}camera_depth_optical_frame"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+    <link name="${namespace}camera_color_optical_frame"/>
+    <joint name="${namespace}camera_color_optical_joint" type="fixed">
+      <parent link="${namespace}camera_depth_optical_frame"/>
+      <child link="${namespace}camera_color_optical_frame"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <xacro:macro name="hall_d405_sensor" params="sensor_name sensor_type topic optical_frame near far info_topic">
       <sensor name="${sensor_name}" type="${sensor_type}">
         <!-- Gazebo camera +X is forward; the ROS optical frame uses +Z.
              The STL front intersects the central ray at support Z = 0.02293 m.
              Render about 1 mm in front so it cannot occlude its own image. -->
-        <pose>-0.0090235 0 0.024 ${-pi/2} ${-pi/2} 0</pose>
+        <pose>-0.0090235 0 0.024 ${pi/2} ${-pi/2} 0</pose>
         <always_on>true</always_on>
         <update_rate>30</update_rate>
         <visualize>true</visualize>
         <topic>${topic}</topic>
-        <gz_frame_id>${namespace}hall_camera_optical_frame</gz_frame_id>
+        <gz_frame_id>${optical_frame}</gz_frame_id>
         <camera>
           <horizontal_fov>${d405_hfov}</horizontal_fov>
           <image>
@@ -96,7 +111,7 @@
               <tx>0</tx><ty>0</ty>
             </projection>
           </lens>
-          <optical_frame_id>${namespace}hall_camera_optical_frame</optical_frame_id>
+          <optical_frame_id>${optical_frame}</optical_frame_id>
           <camera_info_topic>${info_topic}</camera_info_topic>
         </camera>
       </sensor>
@@ -104,11 +119,11 @@
 
     <gazebo reference="${namespace}hall_camera_support_link">
       <xacro:hall_d405_sensor sensor_name="${namespace}hall_camera" sensor_type="camera"
-        topic="${namespace}hall_camera" near="0.005" far="100"
-        info_topic="${namespace}hall_camera/camera_info"/>
+        topic="${namespace}basic_camera" optical_frame="${namespace}camera_color_optical_frame"
+        near="0.005" far="100" info_topic="${namespace}basic_camera/camera_info"/>
       <xacro:hall_d405_sensor sensor_name="${namespace}hall_depth" sensor_type="depth_camera"
-        topic="${namespace}hall_camera/depth/image_raw" near="0.07" far="0.5"
-        info_topic="${namespace}hall_camera/depth/camera_info"/>
+        topic="${namespace}basic_camera/depth/image_raw" optical_frame="${namespace}camera_depth_optical_frame"
+        near="0.07" far="0.5" info_topic="${namespace}basic_camera/depth/camera_info"/>
     </gazebo>
   </xacro:macro>
 </robot>
