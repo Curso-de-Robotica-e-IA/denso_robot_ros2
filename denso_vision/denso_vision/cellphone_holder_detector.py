@@ -146,6 +146,7 @@ class CellphoneHolderDetector(Node):
         self._pipeline = None
         self._video_capture = None
         self._video_timer = None
+        self._realsense_image_publisher = None
 
         image_topic = self.get_parameter('image_topic').value
         self._image_source = self.get_parameter('image_source').value
@@ -179,6 +180,12 @@ class CellphoneHolderDetector(Node):
                 self.get_parameter('realsense_fps').value,
             )
             self._pipeline.start(realsense_config)
+            # Direct RealSense acquisition has no camera-driver node to
+            # publish an Image topic. Publish the unannotated BGR image so
+            # RViz and other ROS consumers can use image_topic uniformly.
+            self._realsense_image_publisher = self.create_publisher(
+                Image, image_topic, 10
+            )
             self.create_timer(1.0 / 30.0, self._realsense_callback)
         elif self._image_source == 'video':
             video_path = self.get_parameter('video_path').value
@@ -260,6 +267,9 @@ class CellphoneHolderDetector(Node):
         message.header.frame_id = self.get_parameter(
             'realsense_frame_id'
         ).value
+        raw_message = self._bridge.cv2_to_imgmsg(color_image, encoding='bgr8')
+        raw_message.header = message.header
+        self._realsense_image_publisher.publish(raw_message)
         self._process_image(message, color_image)
 
     def _video_callback(self) -> None:

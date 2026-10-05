@@ -34,6 +34,21 @@ robots' current poses. For a connected RealSense, omit the image arguments;
 `image_source:=realsense` is the default. Check camera access separately first:
 random motion happens before the detector opens the camera.
 
+With `image_source:=realsense`, the detector opens the D405 itself and
+publishes the raw image on `image_topic` (for example `/left_basic_camera`) and
+the annotated detection view on `/debug_image`. In RViz, add an `Image` display
+for either topic. Before starting `screen_approach`, keep the bringup running
+in another terminal and verify MoveIt responds:
+
+```bash
+ros2 node list | grep -Fx /move_group
+ros2 service list | grep -Fx /move_group/get_parameters
+ros2 param get /move_group robot_description >/dev/null
+```
+
+All three commands must succeed. If they do not, restart the dual bringup; a
+screen-approach launch cannot start MoveIt itself.
+
 Use `test_runs:=N` (1–100, default 1) for N finite approach tests. With
 `use_random_holder_pose:=true`, each test gets a new random holder pose; without
 it, each test uses the current pose. A failed random move, alignment, detection,

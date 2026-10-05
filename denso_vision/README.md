@@ -38,7 +38,9 @@ ros2 launch denso_vision cellphone_holder_vision.launch.py
 
 By default (`image_source:=realsense`) the node reads a connected D405 directly
 through `pyrealsense2` at 1280×720 and 30 FPS, the D405's maximum supported
-color mode. Install it with
+color mode. In this mode it publishes the raw BGR image on `image_topic`
+(`/basic_camera` by default) and the annotated detector view on
+`/debug_image`, so either can be displayed in RViz. Install it with
 `pip install pyrealsense2`. For simulation or rosbag playback, subscribe to a
 ROS image instead:
 
