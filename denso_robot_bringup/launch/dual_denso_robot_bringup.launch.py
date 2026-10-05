@@ -112,11 +112,11 @@ def generate_launch_description():
             description='Control frequency.'))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'left_ip_address', default_value='192.168.0.1',
+            'left_ip_address', default_value='192.168.160.228',
             description='IP address by which the left robot can be reached.'))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'right_ip_address', default_value='192.168.0.2',
+            'right_ip_address', default_value='192.168.160.227',
             description='IP address by which the right robot can be reached.'))
 # Configuration arguments
     declared_arguments.append(

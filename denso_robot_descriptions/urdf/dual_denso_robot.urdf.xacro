@@ -15,8 +15,8 @@
    <xacro:arg name="right_basic_camera" default="false" />
    <xacro:arg name="left_hall_touch_camera" default="false" />
    <xacro:arg name="right_hall_touch_camera" default="false" />
-   <xacro:arg name="left_ip_address" default="192.168.0.1" />
-   <xacro:arg name="right_ip_address" default="192.168.0.2" />
+   <xacro:arg name="left_ip_address" default="192.168.160.228" />
+   <xacro:arg name="right_ip_address" default="192.168.160.227" />
    <xacro:arg name="send_format" default="288" />
    <xacro:arg name="recv_format" default="292" />
    <xacro:arg name="calib_tool" default="false" />

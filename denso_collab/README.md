@@ -3,10 +3,24 @@
 Start the dual-robot bringup in a separate terminal. Then run the screen
 approach in simulation:
 ```bash
-ros2 launch denso_robot_bringup dual_denso_robot_bringup.launch.py
-model:=vs050 sim:=true rviz:=true use_servo:=true
-left_hall_touch_camera:=true right_cellphone_holder:=true right_virtual_phone:=true
+ros2 launch denso_robot_bringup dual_denso_robot_bringup.launch.py \
+  model:=vs050 sim:=true rviz:=true use_servo:=true \
+  left_hall_touch_camera:=true right_cellphone_holder:=true right_virtual_phone:=true
 ```
+
+For the real dual VS050 installation, `sim:=false` automatically uses
+`192.168.160.228` for the left robot and `192.168.160.227` for the right
+robot. Start the first hardware check without Servo:
+
+```bash
+ros2 launch denso_robot_bringup dual_denso_robot_bringup.launch.py \
+  model:=vs050 sim:=false rviz:=true use_servo:=false \
+  left_basic_camera:=false left_hall_touch_camera:=true \
+  right_cellphone_holder:=true right_virtual_phone:=false
+```
+
+Pass `left_ip_address:=...` or `right_ip_address:=...` only to override those
+installed defaults.
 
 ```bash
 ros2 launch denso_collab screen_approach.launch.py \
