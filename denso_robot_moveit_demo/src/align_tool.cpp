@@ -25,15 +25,16 @@ struct Options
 {
   std::string move_group_node = "/move_group";
   std::string planning_group = "left_arm";
-  std::string target_frame = "right_cellphone_holder_tags_frame";
+  std::string target_frame = "right_cellphone_holder_phone_plane_frame";
   std::string camera_frame = "left_camera_depth_optical_frame";
-  double distance_m = 0.3;  // Deprecated: kept as default for target_offset_z_m.
+  double distance_m = 0.25;  // Deprecated: kept as default for target_offset_z_m.
   double target_offset_x_m = 0.0;
   double target_offset_y_m = 0.0;
-  double target_offset_z_m = 0.3;
-  double target_roll_deg = 0.0;
+  double target_offset_z_m = 0.25;
+  // Optical +Z looks toward the phone plane's -Z normal; optical +X follows plane +X.
+  double target_roll_deg = -180.0;
   double target_pitch_deg = 0.0;
-  double target_yaw_deg = 180.0;
+  double target_yaw_deg = 0.0;
   double planning_time = 8.0;
   int num_planning_attempts = 10;
   double velocity_scaling = 0.1;

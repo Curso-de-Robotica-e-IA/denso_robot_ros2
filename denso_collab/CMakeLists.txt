@@ -9,6 +9,7 @@ find_package(rcl_interfaces REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -22,6 +23,7 @@ ament_target_dependencies(move_to_screen_standoff
   rclcpp
   sensor_msgs
   std_msgs
+  std_srvs
   tf2
   tf2_geometry_msgs
   tf2_ros)
@@ -69,6 +71,7 @@ ament_target_dependencies(move_right_to_holder_pose
   sensor_msgs)
 
 install(TARGETS align_tool random_collab_pose move_to_screen_standoff move_to_collab_start record_right_pose move_right_to_holder_pose DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS scripts/sim_touch_contact.py DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 
 ament_package()

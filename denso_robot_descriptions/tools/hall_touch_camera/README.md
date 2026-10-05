@@ -27,9 +27,9 @@ The three tool links (with `left_` or `right_` prefixes for a dual robot) are:
 
 | Link | J6 translation (m) | Meaning |
 | --- | --- | --- |
-| `hall_camera_support_link` | `(0, 0.050, 0.035500)` | Camera support plane after the 180° J6 mounting rotation |
+| `hall_camera_support_link` | `(0, 0, 0)` | Collision-bearing tool link at the J6 mounting origin |
 | `calib_link` | `(0, 0, 0.105987)` | Hall finger touch tip, preserving the existing TCP name |
-| `hall_camera_optical_frame` | `(0.0090235, 0.050, 0.054700)` | Nominal left imager optical center after mounting rotation; ROS optical axes |
+| `hall_camera_optical_frame` | `(-0.050, 0.0090235, 0.054700)` | Nominal left imager optical center after the 90° CCW mesh/frame rotation; ROS optical axes |
 
 `camera_depth_optical_frame` and `camera_color_optical_frame` are coincident
 aliases of the Hall optical frame. Existing clients keep the same camera and
@@ -40,9 +40,8 @@ detection still uses `image_topic:=/left_basic_camera`.
 The supplied STL is in Fusion millimetres. Its mounting origin is placed at
 J6 with a 180° rotation about its Z axis and no gap, and the STL is scaled by
 0.001. The mesh reaches
-Z = 105.9867 mm, matching the measured tip. The support link is offset from
-J6, while its visual and collision mesh are shifted back to the Fusion
-origin. The camera's optical frame follows the CAD support axes; the simulated
+Z = 105.9867 mm, matching the measured tip. The collision-bearing support link
+is colocated with J6, so its TF axis is not detached from the tool. The camera's optical frame follows the CAD support axes; the simulated
 sensor has the same image orientation, so its square housing sits above the
 touch tip in the aligned camera view.
 
