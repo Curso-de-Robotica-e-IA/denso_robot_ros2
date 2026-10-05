@@ -22,6 +22,54 @@ ros2 launch denso_robot_bringup dual_denso_robot_bringup.launch.py \
 Pass `left_ip_address:=...` or `right_ip_address:=...` only to override those
 installed defaults.
 
+## Real robot + D405 validation
+
+Run the bringup above in terminal A. In terminal B, use the same Humble
+environment and confirm MoveIt, controllers, and fresh joint states before
+starting any screen test:
+
+```bash
+source /opt/ros/humble/setup.bash
+source ~/denso_ws/install/setup.bash
+
+ros2 param get /move_group robot_description >/dev/null
+ros2 control list_controllers
+ros2 topic echo --once /joint_states
+```
+
+The joint-state broadcaster and both trajectory controllers must be `active`.
+Test the D405 by itself in terminal C:
+
+```bash
+python3 - <<'PY'
+import pyrealsense2 as rs
+for device in rs.context().query_devices():
+    print(device.get_info(rs.camera_info.name),
+          device.get_info(rs.camera_info.serial_number))
+PY
+
+ros2 launch denso_vision cellphone_holder_vision.launch.py \
+  image_source:=realsense image_topic:=/left_basic_camera
+```
+
+The D405 test publishes `/left_basic_camera` and `/debug_image`. Verify the
+streams with `ros2 topic hz /left_basic_camera` and `ros2 topic hz /debug_image`.
+Stop this standalone detector with `Ctrl-C` before the next command, because
+the screen launch opens the D405 itself.
+
+Finally, run the motion-free integration test:
+
+```bash
+ros2 launch denso_collab screen_approach.launch.py \
+  image_source:=realsense image_topic:=/left_basic_camera \
+  use_random_holder_pose:=false approach_plan_only:=true \
+  touch_enabled:=false sim:=false
+```
+
+This plan-only run validates MoveIt and the camera alignment without executing
+robot motion. It waits for AprilTags 1–4 and one simultaneous red, green, and
+blue target trio.
+
 ```bash
 ros2 launch denso_collab screen_approach.launch.py \
   image_source:=topic image_topic:=/left_basic_camera

@@ -58,6 +58,7 @@ class CellphoneHolderDetector(Node):
         self.declare_parameter('detect_colored_dots', True)
         self.declare_parameter('min_dot_radius_px', 12.0)
         self.declare_parameter('max_dot_radius_px', 150.0)
+        self.declare_parameter('min_dot_circularity', 0.75)
         self.declare_parameter('target_roi_x_min_mm', -50.0)
         self.declare_parameter('target_roi_x_max_mm', 50.0)
         self.declare_parameter('target_roi_y_min_mm', -100.0)
@@ -447,6 +448,7 @@ class CellphoneHolderDetector(Node):
                         self.get_parameter('min_dot_radius_px').value,
                         self.get_parameter('max_dot_radius_px').value,
                         self._hsv_ranges,
+                        self.get_parameter('min_dot_circularity').value,
                     )
                     if self._stable_targets.update(targets):
                         try:

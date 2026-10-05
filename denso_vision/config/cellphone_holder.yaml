@@ -23,13 +23,16 @@ cellphone_holder_detector:
     stable_tolerance_px: 3.0
     min_dot_radius_px: 6.0
     max_dot_radius_px: 150.0
-    red_hsv_0: [0, 100, 50]
-    red_hsv_1: [10, 255, 255]
-    red_hsv_2: [170, 100, 50]
+    min_dot_circularity: 0.75
+    # Values measured from the D405 frame: the red dot is orange (H=13)
+    # and the blue dot is cyan (H=89).
+    red_hsv_0: [0, 60, 180]
+    red_hsv_1: [18, 255, 255]
+    red_hsv_2: [170, 60, 180]
     red_hsv_3: [179, 255, 255]
-    green_hsv_0: [45, 80, 50]
+    green_hsv_0: [45, 50, 160]
     green_hsv_1: [85, 255, 255]
-    blue_hsv_0: [100, 100, 50]
+    blue_hsv_0: [86, 80, 160]
     blue_hsv_1: [130, 255, 255]
     # Holder-plane bounds exclude the tags and the phone's top controls.
     target_roi_x_min_mm: -50.0
