@@ -78,7 +78,12 @@ def _start_tests(context):
 
     def random_stage():
         random_pose = Node(
-            package='denso_collab', executable='random_collab_pose', output='screen')
+            package='denso_collab', executable='random_collab_pose', output='screen',
+            parameters=[{
+                'sim': ParameterValue(LaunchConfiguration('sim'), value_type=bool),
+                'plan_only': ParameterValue(
+                    LaunchConfiguration('approach_plan_only'), value_type=bool),
+            }])
         return [random_pose, RegisterEventHandler(OnProcessExit(
             target_action=random_pose, on_exit=after_random))]
 

@@ -7,6 +7,10 @@ move_to_screen_standoff:
     observation_distance_m: 0.25
     approach_distance_m: 0.03
     sim_touch_approach_distance_m: 0.015
+    # The physical screen is 4.5 mm in +Z from the detected ArUco plane.
+    screen_plane_offset_m: 0.0045
+    # The simulated screen is the 8 mm virtual phone's visible surface.
+    sim_screen_plane_offset_m: 0.008
     align_before_each_target: false
     calibration_offset_x_m: 0.0
     calibration_offset_y_m: 0.0
@@ -15,8 +19,8 @@ move_to_screen_standoff:
     velocity_scaling: 1.0
     acceleration_scaling: 1.0
     detection_timeout_sec: 45.0
-    touch_speed_mps: 0.020
-    touch_retract_speed_mps: 0.030
+    touch_speed_mps: 0.2
+    touch_retract_speed_mps: 0.3
     touch_retract_distance_m: 0.030
     touch_dwell_sec: 0.0
     touch_max_travel_m: 0.035
@@ -37,7 +41,15 @@ random_collab_pose:
     max_holder_offset_x_m: 0.05
     max_holder_offset_y_m: 0.05
     max_holder_offset_z_m: 0.03
-    max_holder_tilt_x_deg: 10.0
-    max_holder_tilt_y_deg: 10.0
-    max_candidate_attempts: 20
+    max_holder_tilt_x_deg: 20.0
+    max_holder_tilt_y_deg: 20.0
+    max_candidate_attempts: 500
     validation_planning_timeout_sec: 2.0
+    # Validate the touch tool across the usable screen before accepting a
+    # random holder pose. The 5 mm margin excludes the phone bezel.
+    screen_validation_width_m: 0.070
+    screen_validation_height_m: 0.150
+    screen_validation_margin_m: 0.005
+    touch_path_samples: 4
+    # Match Servo's lower threshold: accepted paths remain below deceleration.
+    max_touch_jacobian_condition_number: 17.0

@@ -112,6 +112,9 @@ public:
     holder_frame_ = declare_parameter<std::string>("holder_frame", "right_cellphone_holder_tags_frame");
     approach_distance_m_ = declare_parameter<double>("approach_distance_m");
     sim_touch_approach_distance_m_ = declare_parameter<double>("sim_touch_approach_distance_m", 0.015);
+    screen_plane_offset_m_ = declare_parameter<double>("screen_plane_offset_m", 0.0045);
+    const double sim_screen_plane_offset_m =
+      declare_parameter<double>("sim_screen_plane_offset_m", 0.008);
     sim_ = declare_parameter<bool>("sim", false);
     observation_distance_m_ = declare_parameter<double>("observation_distance_m");
     align_before_each_target_ = declare_parameter<bool>("align_before_each_target");
@@ -121,8 +124,11 @@ public:
     acceleration_ = declare_parameter<double>("acceleration_scaling");
     detection_timeout_sec_ = declare_parameter<double>("detection_timeout_sec");
     touch_enabled_ = declare_parameter<bool>("touch_enabled", false);
-    if (sim_ && touch_enabled_) {
-      approach_distance_m_ = sim_touch_approach_distance_m_;
+    if (sim_) {
+      screen_plane_offset_m_ = sim_screen_plane_offset_m;
+      if (touch_enabled_) {
+        approach_distance_m_ = sim_touch_approach_distance_m_;
+      }
     }
     touch_speed_mps_ = declare_parameter<double>("touch_speed_mps", 0.005);
     touch_retract_speed_mps_ = declare_parameter<double>("touch_retract_speed_mps", 0.005);
@@ -138,9 +144,9 @@ public:
       !std::isfinite(acceleration_) || acceleration_ <= 0.0 || acceleration_ > 1.0 ||
       !std::isfinite(detection_timeout_sec_) || detection_timeout_sec_ <= 0.0 ||
       !std::isfinite(touch_speed_mps_) || touch_speed_mps_ <= 0.0 ||
-      touch_speed_mps_ > (sim_ ? 0.05 : 0.02) ||
+      touch_speed_mps_ > (sim_ ? 0.20 : 0.20) ||
       !std::isfinite(touch_retract_speed_mps_) || touch_retract_speed_mps_ <= 0.0 ||
-      touch_retract_speed_mps_ > (sim_ ? 0.10 : 0.03) ||
+      touch_retract_speed_mps_ > (sim_ ? 0.40 : 0.40) ||
       !std::isfinite(touch_retract_distance_m_) || touch_retract_distance_m_ <= 0.0 ||
       touch_retract_distance_m_ > 0.05 || !std::isfinite(touch_dwell_sec_) ||
       touch_dwell_sec_ < 0.0 || touch_dwell_sec_ > 5.0 ||
@@ -148,6 +154,8 @@ public:
       touch_max_travel_m_ > 0.05 || !std::isfinite(touch_timeout_sec_) ||
       touch_timeout_sec_ <= 0.0 || touch_timeout_sec_ > 30.0 ||
       !std::isfinite(sim_touch_approach_distance_m_) || sim_touch_approach_distance_m_ <= 0.0 ||
+      !std::isfinite(screen_plane_offset_m_) || screen_plane_offset_m_ < 0.0 ||
+      screen_plane_offset_m_ > 0.03 ||
       !std::isfinite(max_touch_xy_error_m_) || max_touch_xy_error_m_ <= 0.0 ||
       max_touch_xy_error_m_ > 0.02)
     {
@@ -365,7 +373,7 @@ private:
     pose.header = point.header;
     pose.pose.position.x = point.point.x;
     pose.pose.position.y = point.point.y;
-    pose.pose.position.z = approach_distance_m_;
+    pose.pose.position.z = screen_plane_offset_m_ + approach_distance_m_;
     return pose;
   }
 
@@ -454,8 +462,8 @@ private:
       return false;
     }
     RCLCPP_INFO(
-      get_logger(), "Moving to %s at %.0f mm approach distance",
-      color.c_str(), approach_distance_m_ * 1000.0);
+      get_logger(), "Moving to %s at %.0f mm from screen (screen plane %.1f mm from tags)",
+      color.c_str(), approach_distance_m_ * 1000.0, screen_plane_offset_m_ * 1000.0);
     return plan_and_execute();
   }
 
@@ -534,10 +542,14 @@ private:
         twist.twist.linear.z = speed_mps * direction.z();
         servo_publisher_->publish(twist);
       };
-    const auto halt = [&command]() {
-        for (int count = 0; count < 5; ++count) {
+    constexpr auto servo_command_period = std::chrono::milliseconds(10);
+    const auto halt = [&command, servo_command_period]() {
+        // Match Servo's 100 Hz publish period. The touch callback already sends
+        // the first zero command immediately, then these four commands settle
+        // the stop for 40 ms before reversing into the retract.
+        for (int count = 0; count < 4; ++count) {
           command(0.0);
-          std::this_thread::sleep_for(std::chrono::milliseconds(20));
+          std::this_thread::sleep_for(servo_command_period);
         }
       };
     const auto tip_z = [this]() {
@@ -592,7 +604,7 @@ private:
           break;
         }
         command(touch_speed_mps_);
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        std::this_thread::sleep_for(servo_command_period);
       }
       if (!contact_seen) {
         halt();
@@ -611,7 +623,7 @@ private:
             break;
           }
           command(0.0);
-          std::this_thread::sleep_for(std::chrono::milliseconds(20));
+          std::this_thread::sleep_for(servo_command_period);
         }
         const auto retract_deadline = steady_ms() + static_cast<int64_t>(touch_timeout_sec_ * 1000.0);
         while (retract_ok && rclcpp::ok() && steady_ms() < retract_deadline &&
@@ -627,7 +639,7 @@ private:
             break;  // Unexpected motion direction: stop before moving farther into the phone.
           }
           command(-touch_retract_speed_mps_);
-          std::this_thread::sleep_for(std::chrono::milliseconds(20));
+          std::this_thread::sleep_for(servo_command_period);
         }
         halt();
         touched = touched && retract_ok && tip_z() >= retract_target_z - 0.002;
@@ -721,6 +733,7 @@ private:
   std::string holder_frame_;
   double approach_distance_m_;
   double sim_touch_approach_distance_m_;
+  double screen_plane_offset_m_;
   double observation_distance_m_;
   bool align_before_each_target_;
   double planning_time_;
