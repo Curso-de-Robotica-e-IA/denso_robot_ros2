@@ -21,6 +21,8 @@
     sim:=false
     basic_camera:=false
     hall_touch_camera:=false
+    hall_touch_calib_offset_x_mm:=-2
+    hall_touch_calib_offset_y_mm:=-1
     calib_tool:=false
     calib_xyz:='0 0 0.05'
     calib_rpy:='0 0 0'
@@ -126,7 +128,11 @@
     </xacro:if>
 
     <xacro:if value="${hall_touch_camera}">
-      <xacro:hall_touch_camera namespace="${namespace}" end_effector="J6" />
+      <xacro:hall_touch_camera
+        namespace="${namespace}"
+        end_effector="J6"
+        calib_offset_x_mm="${hall_touch_calib_offset_x_mm}"
+        calib_offset_y_mm="${hall_touch_calib_offset_y_mm}" />
     </xacro:if>
 
     <xacro:if value="${calib_tool and not basic_camera and not hall_touch_camera}">

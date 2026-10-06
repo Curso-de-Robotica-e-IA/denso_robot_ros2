@@ -14,6 +14,8 @@
    <xacro:arg name="sim" default="false" />
    <xacro:arg name="basic_camera" default="false" />
    <xacro:arg name="hall_touch_camera" default="false" />
+   <xacro:arg name="hall_touch_calib_offset_x_mm" default="-2" />
+   <xacro:arg name="hall_touch_calib_offset_y_mm" default="-1" />
   <xacro:arg name="calib_tool" default="false" />
   <xacro:arg name="calib_xyz" default="0 0 0.05" />
   <xacro:arg name="calib_rpy" default="0 0 0" />
@@ -46,6 +48,8 @@
      sim="$(arg sim)"
      basic_camera="$(arg basic_camera)"
      hall_touch_camera="$(arg hall_touch_camera)"
+     hall_touch_calib_offset_x_mm="$(arg hall_touch_calib_offset_x_mm)"
+     hall_touch_calib_offset_y_mm="$(arg hall_touch_calib_offset_y_mm)"
     calib_tool="$(arg calib_tool)"
     calib_xyz="$(arg calib_xyz)"
      calib_rpy="$(arg calib_rpy)"

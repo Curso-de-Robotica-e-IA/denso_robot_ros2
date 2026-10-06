@@ -15,6 +15,10 @@
    <xacro:arg name="right_basic_camera" default="false" />
    <xacro:arg name="left_hall_touch_camera" default="false" />
    <xacro:arg name="right_hall_touch_camera" default="false" />
+   <xacro:arg name="left_hall_touch_calib_offset_x_mm" default="-2" />
+   <xacro:arg name="left_hall_touch_calib_offset_y_mm" default="-1" />
+   <xacro:arg name="right_hall_touch_calib_offset_x_mm" default="0" />
+   <xacro:arg name="right_hall_touch_calib_offset_y_mm" default="0" />
    <xacro:arg name="left_ip_address" default="192.168.160.228" />
    <xacro:arg name="right_ip_address" default="192.168.160.227" />
    <xacro:arg name="send_format" default="288" />
@@ -53,6 +57,8 @@
      sim="$(arg sim)"
      basic_camera="$(arg left_basic_camera)"
      hall_touch_camera="$(arg left_hall_touch_camera)"
+     hall_touch_calib_offset_x_mm="$(arg left_hall_touch_calib_offset_x_mm)"
+     hall_touch_calib_offset_y_mm="$(arg left_hall_touch_calib_offset_y_mm)"
      ip_address="$(arg left_ip_address)"
      verbose="$(arg verbose)"
      send_format="$(arg send_format)"
@@ -82,6 +88,8 @@
      sim="$(arg sim)"
      basic_camera="$(arg right_basic_camera)"
      hall_touch_camera="$(arg right_hall_touch_camera)"
+     hall_touch_calib_offset_x_mm="$(arg right_hall_touch_calib_offset_x_mm)"
+     hall_touch_calib_offset_y_mm="$(arg right_hall_touch_calib_offset_y_mm)"
      ip_address="$(arg right_ip_address)"
      verbose="$(arg verbose)"
      send_format="$(arg send_format)"

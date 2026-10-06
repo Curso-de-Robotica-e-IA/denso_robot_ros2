@@ -177,6 +177,14 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
+            'hall_touch_calib_offset_x_mm', default_value='-2.0',
+            description='calib_link local X offset in millimetres'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'hall_touch_calib_offset_y_mm', default_value='-1.0',
+            description='calib_link local Y offset in millimetres'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
             'calib_tool', default_value='false',
             description='Add calib tool in J6'
         ))
@@ -263,6 +271,10 @@ def generate_launch_description():
     gazebo_args = LaunchConfiguration('gazebo_args')
     basic_camera = LaunchConfiguration('basic_camera')
     hall_touch_camera = LaunchConfiguration('hall_touch_camera')
+    hall_touch_calib_offset_x_mm = LaunchConfiguration(
+        'hall_touch_calib_offset_x_mm')
+    hall_touch_calib_offset_y_mm = LaunchConfiguration(
+        'hall_touch_calib_offset_y_mm')
     calib_tool = LaunchConfiguration('calib_tool')
     calib_xyz = LaunchConfiguration('calib_xyz')
     calib_rpy = LaunchConfiguration('calib_rpy')
@@ -302,6 +314,8 @@ def generate_launch_description():
             'sim:=', sim, ' ',
             'basic_camera:=', basic_camera, ' ',
             'hall_touch_camera:=', hall_touch_camera, ' ',
+            'hall_touch_calib_offset_x_mm:=', hall_touch_calib_offset_x_mm, ' ',
+            'hall_touch_calib_offset_y_mm:=', hall_touch_calib_offset_y_mm, ' ',
             'calib_tool:=', calib_tool, ' ',
             'calib_xyz:="', calib_xyz, '" ',
             'calib_rpy:="', calib_rpy, '" ',

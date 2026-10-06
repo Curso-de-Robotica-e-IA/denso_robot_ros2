@@ -171,6 +171,11 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
+            'left_servo_check_collisions', default_value='true',
+            description='Enable MoveIt Servo collision checks for the left arm.')
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
             'verbose', default_value='false',
             description='Print out additional debug information.'))
     declared_arguments.append(
@@ -189,6 +194,22 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument('right_hall_touch_camera', default_value='false',
                               description='Attach the Hall touch/D405 tool to right J6'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'left_hall_touch_calib_offset_x_mm', default_value='-2.0',
+            description='left_calib_link local X offset in millimetres'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'left_hall_touch_calib_offset_y_mm', default_value='-1.0',
+            description='left_calib_link local Y offset in millimetres'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'right_hall_touch_calib_offset_x_mm', default_value='0.0',
+            description='right_calib_link local X offset in millimetres'))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'right_hall_touch_calib_offset_y_mm', default_value='0.0',
+            description='right_calib_link local Y offset in millimetres'))
     declared_arguments.append(
         DeclareLaunchArgument(
             'left_cellphone_holder', default_value='false',
@@ -291,10 +312,19 @@ def generate_launch_description():
     sim = LaunchConfiguration('sim')
     gazebo_args = LaunchConfiguration('gazebo_args')
     use_servo = LaunchConfiguration('use_servo')
+    left_servo_check_collisions = LaunchConfiguration('left_servo_check_collisions')
     left_basic_camera = LaunchConfiguration('left_basic_camera')
     right_basic_camera = LaunchConfiguration('right_basic_camera')
     left_hall_touch_camera = LaunchConfiguration('left_hall_touch_camera')
     right_hall_touch_camera = LaunchConfiguration('right_hall_touch_camera')
+    left_hall_touch_calib_offset_x_mm = LaunchConfiguration(
+        'left_hall_touch_calib_offset_x_mm')
+    left_hall_touch_calib_offset_y_mm = LaunchConfiguration(
+        'left_hall_touch_calib_offset_y_mm')
+    right_hall_touch_calib_offset_x_mm = LaunchConfiguration(
+        'right_hall_touch_calib_offset_x_mm')
+    right_hall_touch_calib_offset_y_mm = LaunchConfiguration(
+        'right_hall_touch_calib_offset_y_mm')
     left_cellphone_holder = LaunchConfiguration('left_cellphone_holder')
     right_cellphone_holder = LaunchConfiguration('right_cellphone_holder')
     right_virtual_phone = LaunchConfiguration('right_virtual_phone')
@@ -341,6 +371,10 @@ def generate_launch_description():
             'right_basic_camera:=', right_basic_camera, ' ',
             'left_hall_touch_camera:=', left_hall_touch_camera, ' ',
             'right_hall_touch_camera:=', right_hall_touch_camera, ' ',
+            'left_hall_touch_calib_offset_x_mm:=', left_hall_touch_calib_offset_x_mm, ' ',
+            'left_hall_touch_calib_offset_y_mm:=', left_hall_touch_calib_offset_y_mm, ' ',
+            'right_hall_touch_calib_offset_x_mm:=', right_hall_touch_calib_offset_x_mm, ' ',
+            'right_hall_touch_calib_offset_y_mm:=', right_hall_touch_calib_offset_y_mm, ' ',
             'left_cellphone_holder:=', left_cellphone_holder, ' ',
             'right_cellphone_holder:=', right_cellphone_holder, ' ',
             'right_virtual_phone:=', right_virtual_phone, ' ',
@@ -611,7 +645,9 @@ def generate_launch_description():
                     'moveit_servo.planning_frame': 'world',
                     'moveit_servo.ee_frame_name': 'left_J6',
                     'moveit_servo.robot_link_command_frame': 'left_base_link',
-                    'moveit_servo.command_out_topic': '/left_denso_joint_trajectory_controller/joint_trajectory'
+                    'moveit_servo.command_out_topic': '/left_denso_joint_trajectory_controller/joint_trajectory',
+                    'moveit_servo.check_collisions': ParameterValue(
+                        left_servo_check_collisions, value_type=bool),
     }
     left_servo_params['moveit_servo.self_collision_proximity_threshold'] = ParameterValue(
         PythonExpression([

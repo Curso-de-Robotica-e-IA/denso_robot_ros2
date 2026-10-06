@@ -2,7 +2,11 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   <!-- Fusion coordinates are millimetres with the mounting face at J6.
        The three links are the camera support, touch TCP, and left optical centre. -->
-  <xacro:macro name="hall_touch_camera" params="namespace end_effector">
+  <xacro:macro name="hall_touch_camera" params="
+    namespace
+    end_effector
+    calib_offset_x_mm:=-2
+    calib_offset_y_mm:=-1">
     <xacro:property name="d405_width" value="1920"/>
     <xacro:property name="d405_height" value="1080"/>
     <!-- rectified.0 in config/d405_calibration.json (pixels). -->
@@ -50,7 +54,12 @@
     <joint name="${namespace}calib_joint" type="fixed">
       <parent link="${namespace}hall_camera_support_link"/>
       <child link="${namespace}calib_link"/>
-      <origin xyz="0 0 0.105987" rpy="0 0 ${pi}"/>
+      <!-- Offsets are expressed in calib_link's local X/Y axes and exposed
+           in millimetres. The joint origin translation is expressed in the
+           parent frame, so local Y changes sign after the pi rotation in X. -->
+      <origin
+        xyz="${calib_offset_x_mm * 0.001} ${-calib_offset_y_mm * 0.001} 0.105987"
+        rpy="0 0 ${pi}"/>
     </joint>
 
     <!-- Nominal D405 left imager: half the 18.047 mm stereo baseline in
