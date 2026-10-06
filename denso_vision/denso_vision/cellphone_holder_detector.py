@@ -14,8 +14,10 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
+from rclpy.time import Time
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float64, Float64MultiArray, MultiArrayDimension
+from tf2_ros import Buffer, TransformException, TransformListener
 
 from denso_vision.holder_geometry import HolderGeometry, transform_pixel
 from denso_vision.colored_targets import (
@@ -42,6 +44,7 @@ class CellphoneHolderDetector(Node):
         self.declare_parameter('realsense_width', 1280)
         self.declare_parameter('realsense_height', 720)
         self.declare_parameter('realsense_fps', 30)
+        self.declare_parameter('undistort_realsense_color', True)
         self.declare_parameter(
             'holder_frame_id', 'right_cellphone_holder_tags_frame'
         )
@@ -55,6 +58,7 @@ class CellphoneHolderDetector(Node):
         self.declare_parameter('homography_ransac_threshold_mm', 4.0)
         self.declare_parameter('fallback_binary_threshold', 90)
         self.declare_parameter('publish_debug_image', True)
+        self.declare_parameter('debug_tip_link', 'left_calib_link')
         self.declare_parameter('detect_colored_dots', True)
         self.declare_parameter('min_dot_radius_px', 12.0)
         self.declare_parameter('max_dot_radius_px', 150.0)
@@ -139,6 +143,9 @@ class CellphoneHolderDetector(Node):
         self._bridge = CvBridge()
         self._requested_pixel: Optional[np.ndarray] = None
         self._holder_frame_id = self.get_parameter('holder_frame_id').value
+        self._debug_tip_link = self.get_parameter('debug_tip_link').value
+        self._tf_buffer = Buffer()
+        self._tf_listener = TransformListener(self._tf_buffer, self)
         self._ransac_threshold = (
             self.get_parameter('homography_ransac_threshold_mm').value
             * to_metres
@@ -148,6 +155,9 @@ class CellphoneHolderDetector(Node):
         self._video_capture = None
         self._video_timer = None
         self._realsense_image_publisher = None
+        self._undistort_map_x = None
+        self._undistort_map_y = None
+        self._undistortion_profile = None
 
         image_topic = self.get_parameter('image_topic').value
         self._image_source = self.get_parameter('image_source').value
@@ -262,16 +272,100 @@ class CellphoneHolderDetector(Node):
         color_image = np.asanyarray(color_frame.get_data())
         if color_frame.profile.format() == self._rs.format.rgb8:
             color_image = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
+        color_image = self._undistort_realsense_color(
+            color_frame, color_image
+        )
 
         message = Image()
         message.header.stamp = self.get_clock().now().to_msg()
         message.header.frame_id = self.get_parameter(
             'realsense_frame_id'
         ).value
-        raw_message = self._bridge.cv2_to_imgmsg(color_image, encoding='bgr8')
-        raw_message.header = message.header
-        self._realsense_image_publisher.publish(raw_message)
+        image_message = self._bridge.cv2_to_imgmsg(color_image, encoding='bgr8')
+        image_message.header = message.header
+        self._realsense_image_publisher.publish(image_message)
         self._process_image(message, color_image)
+
+    def _undistort_realsense_color(
+        self, color_frame, image: np.ndarray
+    ) -> np.ndarray:
+        """Return a rectified D405 colour image using its active SDK profile.
+
+        RealSense returns the camera's active intrinsics with every stream
+        profile.  A profile whose model is ``none`` (or whose coefficients are
+        zero) is already rectified.  Otherwise, create a destination-to-source
+        map once: each ideal pixel is converted into a unit-depth ray and the
+        RealSense SDK projects that ray into the distorted source frame.  This
+        covers every distortion model exposed by librealsense, including its
+        inverse Brown-Conrady model, which OpenCV cannot represent directly.
+        """
+        if not self.get_parameter('undistort_realsense_color').value:
+            return image
+        intrinsics = color_frame.profile.as_video_stream_profile().get_intrinsics()
+        signature = (
+            intrinsics.width, intrinsics.height, intrinsics.fx, intrinsics.fy,
+            intrinsics.ppx, intrinsics.ppy, int(intrinsics.model),
+            tuple(float(value) for value in intrinsics.coeffs),
+        )
+        if signature != self._undistortion_profile:
+            self._undistortion_profile = signature
+            self._undistort_map_x, self._undistort_map_y = \
+                self._create_realsense_undistort_maps(intrinsics)
+        if self._undistort_map_x is None:
+            return image
+        return cv2.remap(
+            image, self._undistort_map_x, self._undistort_map_y,
+            interpolation=cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_CONSTANT,
+        )
+
+    def _create_realsense_undistort_maps(self, intrinsics):
+        """Create rectified-pixel to raw-pixel maps from SDK intrinsics."""
+        coefficients = np.asarray(intrinsics.coeffs, dtype=np.float64)
+        if (
+            intrinsics.model == self._rs.distortion.none or
+            np.allclose(coefficients, 0.0)
+        ):
+            self.get_logger().info(
+                'RealSense colour profile is already rectified: '
+                f'{intrinsics.width}x{intrinsics.height}, '
+                f'model={intrinsics.model}'
+            )
+            return None, None
+
+        height, width = intrinsics.height, intrinsics.width
+        map_x = np.empty((height, width), dtype=np.float32)
+        map_y = np.empty((height, width), dtype=np.float32)
+        try:
+            normalized_x = (np.arange(width, dtype=np.float64) - intrinsics.ppx) / intrinsics.fx
+            for row in range(height):
+                normalized_y = (row - intrinsics.ppy) / intrinsics.fy
+                for column, x_coordinate in enumerate(normalized_x):
+                    source = self._rs.rs2_project_point_to_pixel(
+                        intrinsics, [float(x_coordinate), float(normalized_y), 1.0]
+                    )
+                    map_x[row, column] = source[0]
+                    map_y[row, column] = source[1]
+        except (AttributeError, RuntimeError) as error:
+            # Standard OpenCV Brown-Conrady fallback for older bindings that
+            # do not expose the librealsense projection helper.
+            self.get_logger().warning(
+                f'RealSense SDK projection unavailable ({error}); using OpenCV undistortion'
+            )
+            camera_matrix = np.array([
+                [intrinsics.fx, 0.0, intrinsics.ppx],
+                [0.0, intrinsics.fy, intrinsics.ppy],
+                [0.0, 0.0, 1.0],
+            ])
+            map_x, map_y = cv2.initUndistortRectifyMap(
+                camera_matrix, coefficients, None, camera_matrix,
+                (width, height), cv2.CV_32FC1,
+            )
+        self.get_logger().info(
+            'Rectifying RealSense colour frames with active SDK intrinsics: '
+            f'{width}x{height}, model={intrinsics.model}, coeffs={coefficients.tolist()}'
+        )
+        return map_x, map_y
 
     def _video_callback(self) -> None:
         """Read and process one BGR frame from an AVI or other OpenCV video."""
@@ -345,6 +439,74 @@ class CellphoneHolderDetector(Node):
         message.point.y = float(plane_point[1])
         message.point.z = 0.0
         self._point_publisher.publish(message)
+
+    def _draw_tip_projection(
+        self, image: np.ndarray, homography: np.ndarray
+    ) -> Optional[str]:
+        """Draw the current calibration-tip origin projected onto the image.
+
+        The fitted homography maps image pixels to the holder plane.  The
+        inverse maps the tip's current holder-plane X/Y location back to the
+        D405 image, which makes an alignment error immediately visible in the
+        same view used to inspect the tags and RGB targets.
+        """
+        try:
+            transform = self._tf_buffer.lookup_transform(
+                self._holder_frame_id, self._debug_tip_link, Time()
+            )
+            tip = transform.transform.translation
+            inverse = np.linalg.inv(homography)
+            projected = cv2.perspectiveTransform(
+                np.array([[[tip.x, tip.y]]], dtype=np.float64), inverse
+            )[0, 0]
+        except (TransformException, np.linalg.LinAlgError) as error:
+            self.get_logger().debug(
+                f'Cannot project {self._debug_tip_link}: {error}'
+            )
+            return None
+
+        if not np.all(np.isfinite(projected)):
+            return f'Tip projection is not finite ({tip.x:.3f}, {tip.y:.3f}) m'
+        pixel = tuple(np.rint(projected).astype(int))
+        in_image = 0 <= pixel[0] < image.shape[1] and 0 <= pixel[1] < image.shape[0]
+        if in_image:
+            # Magenta dot: distinct from the red requested-pixel cross and RGB targets.
+            cv2.circle(image, pixel, 7, (255, 0, 255), -1, cv2.LINE_AA)
+            cv2.circle(image, pixel, 2, (0, 0, 0), -1, cv2.LINE_AA)
+            return f'Tip px: ({pixel[0]}, {pixel[1]})'
+        return f'Tip px outside image: ({pixel[0]}, {pixel[1]})'
+
+    @staticmethod
+    def _draw_detected_blobs(image: np.ndarray, targets) -> None:
+        """Draw every accepted RGB blob and its centre on the debug image."""
+        colors = {
+            'red': (0, 0, 255),
+            'green': (0, 220, 0),
+            'blue': (255, 0, 0),
+        }
+        counts = {color: 0 for color in colors}
+        for target in targets:
+            counts[target.color] += 1
+            color = colors[target.color]
+            center = (int(round(target.pixel_x)), int(round(target.pixel_y)))
+            radius = max(1, int(round(target.radius_px)))
+            cv2.circle(image, center, radius, color, 2, cv2.LINE_AA)
+            cv2.drawMarker(
+                image, center, color, cv2.MARKER_CROSS, 12, 2, cv2.LINE_AA
+            )
+            label = (
+                f'{target.color[0].upper()}{counts[target.color]} '
+                f'({center[0]}, {center[1]}) r={radius}'
+            )
+            label_position = (center[0] + radius + 4, center[1] - radius - 4)
+            cv2.putText(
+                image, label, label_position, cv2.FONT_HERSHEY_SIMPLEX,
+                0.45, (0, 0, 0), 3, cv2.LINE_AA,
+            )
+            cv2.putText(
+                image, label, label_position, cv2.FONT_HERSHEY_SIMPLEX,
+                0.45, color, 1, cv2.LINE_AA,
+            )
 
     def _image_callback(self, message: Image) -> None:
         try:
@@ -441,6 +603,9 @@ class CellphoneHolderDetector(Node):
                 self._publish_target_point(
                     message, homography, target_pixel
                 )
+                tip_overlay = self._draw_tip_projection(color_image, homography)
+                if tip_overlay:
+                    overlay_lines.append(tip_overlay)
                 if self.get_parameter('detect_colored_dots').value:
                     targets_processed = True
                     targets = detect_targets(
@@ -449,6 +614,17 @@ class CellphoneHolderDetector(Node):
                         self.get_parameter('max_dot_radius_px').value,
                         self._hsv_ranges,
                         self.get_parameter('min_dot_circularity').value,
+                    )
+                    self._draw_detected_blobs(color_image, targets)
+                    blob_counts = {
+                        color: sum(target.color == color for target in targets)
+                        for color in ('red', 'green', 'blue')
+                    }
+                    overlay_lines.append(
+                        'Blobs: {} (R:{} G:{} B:{})'.format(
+                            len(targets), blob_counts['red'],
+                            blob_counts['green'], blob_counts['blue'],
+                        )
                     )
                     if self._stable_targets.update(targets):
                         try:

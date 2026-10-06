@@ -10,6 +10,9 @@ cellphone_holder_detector:
     realsense_width: 1280
     realsense_height: 720
     realsense_fps: 30
+    # Rectify direct pyrealsense2 colour frames from their active SDK
+    # intrinsics before tag and coloured-circle detection.
+    undistort_realsense_color: true
     holder_frame_id: right_cellphone_holder_tags_frame
     tag_ids: [1, 2, 3, 4]
     tag_size_mm: 21.5
@@ -41,3 +44,6 @@ cellphone_holder_detector:
     target_roi_y_max_mm: 85.0
     target_diagnostic_dir: /tmp/denso_target_diagnostics
     publish_debug_image: true
+    # The magenta dot in /debug_image is this link projected through the
+    # inverse image-to-holder-plane homography.
+    debug_tip_link: left_calib_link

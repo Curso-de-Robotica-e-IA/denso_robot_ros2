@@ -53,7 +53,7 @@ For a namespaced camera, override the image topic. For example:
 
 ```bash
 ros2 launch denso_vision cellphone_holder_vision.launch.py \
-  image_source:=topic image_topic:=/left_basic_camera
+  image_source:=realsense image_topic:=/left_basic_camera
 ```
 
 For offline homography validation, replay an AVI directly. The supplied video
@@ -83,7 +83,15 @@ ros2 topic pub --once /target_pixel geometry_msgs/msg/PointStamped \
 | `homography` | `std_msgs/msg/Float64MultiArray` | Row-major 3x3 transform from image pixels to holder-plane metres |
 | `homography_rmse_mm` | `std_msgs/msg/Float64` | Fit error over all 16 corners, in millimetres |
 | `target_point` | `geometry_msgs/msg/PointStamped` | Selected pixel expressed as `(x, y, 0)` on the holder plane |
-| `debug_image` | `sensor_msgs/msg/Image` | Detected tags and selected pixel overlay |
+| `debug_image` | `sensor_msgs/msg/Image` | Detected tags, selected pixel cross, and magenta calibration-tip projection |
+
+When TF is available, the magenta dot is the current `debug_tip_link`
+(`left_calib_link` by default) position transformed into the holder frame and
+projected back into camera pixels through the inverse homography. It is only a
+plane X/Y projection; its Z distance to the screen is intentionally ignored.
+Each accepted RGB blob also has a matching coloured outline, centre cross, and
+`R/G/B` label containing its pixel centre and radius. The image header reports
+the total and per-colour blob counts, including incomplete or unstable sets.
 | `target_pixel` | `geometry_msgs/msg/PointStamped` | Runtime input selecting an image `(u, v)` pixel |
 | `detected_targets` | `std_msgs/msg/Float64MultiArray` | One stable, complete RGB set; six values per target: color index (red=0, green=1, blue=2), pixel x/y, pixel radius, holder-plane x/y in metres |
 
