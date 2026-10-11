@@ -47,6 +47,7 @@ struct Limits
   double max_touch_condition_number;
   double calibration_x_m;
   double calibration_y_m;
+  double phone_rotation_rad;
 };
 
 using Anchor = std::pair<std::string, std::vector<double>>;
@@ -143,6 +144,9 @@ Limits load_limits(const rclcpp::Node::SharedPtr & node, const std::string & pat
       "calibration_offset_x_m", screen["calibration_offset_x_m"].as<double>()),
     node->declare_parameter(
       "calibration_offset_y_m", screen["calibration_offset_y_m"].as<double>())};
+  const std::string phone_orientation = node->declare_parameter<std::string>(
+    "phone_orientation", values["phone_orientation"].as<std::string>());
+  limits.phone_rotation_rad = denso_collab::phone_rotation_radians(phone_orientation);
   if (limits.planning_mode != "dual_arm" && limits.planning_mode != "sequential" ||
     limits.offset_x_m < 0.0 || limits.offset_y_m < 0.0 || limits.offset_z_m < 0.0 ||
     limits.tilt_x_deg < 0.0 || limits.tilt_y_deg < 0.0 || limits.attempts <= 0 ||
@@ -260,6 +264,7 @@ bool validate_screen_reachability(
   const Eigen::Isometry3d world_camera = aligned_state.getGlobalLinkTransform(camera_link);
   const Eigen::Isometry3d tool_camera = world_tool.inverse() * world_camera;
   const Eigen::Matrix3d holder_camera_rotation =
+    Eigen::AngleAxisd(-limits.phone_rotation_rad, Eigen::Vector3d::UnitZ()).toRotationMatrix() *
     Eigen::AngleAxisd(std::acos(-1.0), Eigen::Vector3d::UnitX()).toRotationMatrix();
   const Eigen::Matrix3d world_tool_rotation =
     world_holder.rotation() * holder_camera_rotation * tool_camera.rotation().transpose();
@@ -450,7 +455,8 @@ int main(int argc, char ** argv)
     requested_holder.translate(Eigen::Vector3d(dx, dy, dz));
     requested_holder.rotate(
       Eigen::AngleAxisd(tilt_x, Eigen::Vector3d::UnitX()) *
-      Eigen::AngleAxisd(tilt_y, Eigen::Vector3d::UnitY()));
+      Eigen::AngleAxisd(tilt_y, Eigen::Vector3d::UnitY()) *
+      Eigen::AngleAxisd(limits.phone_rotation_rad, Eigen::Vector3d::UnitZ()));
 
     moveit::core::RobotState candidate(anchor_state);
     if (!candidate.setFromIK(right_joints, requested_holder, kHolderFrame, 0.05)) {
@@ -461,7 +467,8 @@ int main(int argc, char ** argv)
 
     const auto holder = to_transform(candidate.getGlobalLinkTransform(kHolderFrame));
     const auto camera_pose = denso_collab::camera_pose_from_holder(
-      holder, tf2::Vector3(0.0, 0.0, limits.camera_distance_m));
+      holder, tf2::Vector3(0.0, 0.0, limits.camera_distance_m),
+      limits.phone_rotation_rad);
     if (!candidate.setFromIK(left_joints, camera_pose, kCameraFrame, 0.05)) {
       RCLCPP_INFO(logger, "Candidate %d/%d: left-camera IK failed", attempt, limits.attempts);
       continue;

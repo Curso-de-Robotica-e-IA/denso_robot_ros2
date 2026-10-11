@@ -3,7 +3,9 @@
 import numpy as np
 import pytest
 
-from denso_vision.holder_geometry import HolderGeometry, transform_pixel
+from denso_vision.holder_geometry import (
+    HolderGeometry, image_tag_order, transform_pixel,
+)
 
 
 def test_measured_trapezoid_geometry():
@@ -62,3 +64,29 @@ def test_impossible_layout_is_rejected():
     )
     with pytest.raises(ValueError):
         _ = geometry.height
+
+
+def test_portrait_image_tag_order():
+    """The physical portrait holder reads 1 2 / 4 3 in the image."""
+    centres = {
+        1: np.array([10.0, 10.0]),
+        2: np.array([90.0, 12.0]),
+        4: np.array([12.0, 190.0]),
+        3: np.array([88.0, 188.0]),
+    }
+    assert image_tag_order(centres) == (1, 2, 4, 3)
+
+
+def test_counterclockwise_horizontal_image_tag_order():
+    """A visual +90 degree rotation reads 2 3 / 1 4 in the image."""
+    portrait = {
+        1: np.array([-1.0, -2.0]),
+        2: np.array([1.0, -2.0]),
+        4: np.array([-1.0, 2.0]),
+        3: np.array([1.0, 2.0]),
+    }
+    horizontal = {
+        tag_id: np.array([point[1], -point[0]])
+        for tag_id, point in portrait.items()
+    }
+    assert image_tag_order(horizontal) == (2, 3, 1, 4)

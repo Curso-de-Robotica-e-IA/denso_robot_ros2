@@ -1,6 +1,8 @@
 move_to_screen_standoff:
   ros__parameters:
     holder_frame: right_cellphone_holder_tags_frame
+    # vertical or horizontal; horizontal is +90 deg CCW for the holder.
+    phone_orientation: vertical
     target_link: left_camera_depth_optical_frame
     tool_link: left_calib_link
     # Shared with random_collab_pose for its hypothetical camera alignment.
@@ -33,10 +35,13 @@ sim_touch_contact:
     screen_frame: right_virtual_phone_screen_frame
     phone_width_m: 0.070
     phone_height_m: 0.150
-    contact_gap_m: 0.002
+    # Contact is sampled at 50 Hz. At 0.2 m/s the tip advances 4 mm between
+    # samples, so a 5 mm positive gap prevents it from skipping the screen.
+    contact_gap_m: 0.005
 
 random_collab_pose:
   ros__parameters:
+    phone_orientation: vertical
     planning_mode: dual_arm  # dual_arm or sequential
     max_holder_offset_x_m: 0.05
     max_holder_offset_y_m: 0.05

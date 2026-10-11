@@ -31,8 +31,11 @@ def _start_tests(context):
             raise ValueError('use_random_holder_pose must be true or false')
         sim = LaunchConfiguration('sim').perform(context).lower()
         touch_enabled = LaunchConfiguration('touch_enabled').perform(context).lower()
+        phone_orientation = LaunchConfiguration('phone_orientation').perform(context).lower()
         if sim not in ('true', 'false') or touch_enabled not in ('true', 'false'):
             raise ValueError('sim and touch_enabled must be true or false')
+        if phone_orientation not in ('vertical', 'horizontal'):
+            raise ValueError('phone_orientation must be vertical or horizontal')
     except ValueError as error:
         return _stop(str(error))
 
@@ -51,6 +54,8 @@ def _start_tests(context):
                 'image_source': LaunchConfiguration('image_source'),
                 'image_topic': LaunchConfiguration('image_topic'),
                 'video_path': LaunchConfiguration('video_path'),
+                'phone_orientation': phone_orientation,
+                'sim': sim,
             }.items()))
             if sim == 'true' and touch_enabled == 'true':
                 actions.append(Node(
@@ -70,6 +75,7 @@ def _start_tests(context):
                 'touch_enabled': ParameterValue(
                     LaunchConfiguration('touch_enabled'), value_type=bool),
                 'sim': ParameterValue(LaunchConfiguration('sim'), value_type=bool),
+                'phone_orientation': phone_orientation,
             }],
         )
         actions.extend([screen, RegisterEventHandler(OnProcessExit(
@@ -83,6 +89,7 @@ def _start_tests(context):
                 'sim': ParameterValue(LaunchConfiguration('sim'), value_type=bool),
                 'plan_only': ParameterValue(
                     LaunchConfiguration('approach_plan_only'), value_type=bool),
+                'phone_orientation': phone_orientation,
             }])
         return [random_pose, RegisterEventHandler(OnProcessExit(
             target_action=random_pose, on_exit=after_random))]
@@ -114,5 +121,8 @@ def generate_launch_description():
         DeclareLaunchArgument('approach_plan_only', default_value='false'),
         DeclareLaunchArgument('sim', default_value='false'),
         DeclareLaunchArgument('touch_enabled', default_value='false'),
+        DeclareLaunchArgument(
+            'phone_orientation', default_value='vertical',
+            description='Phone pose: vertical or horizontal (+90 deg CCW)'),
         OpaqueFunction(function=_start_tests),
     ])

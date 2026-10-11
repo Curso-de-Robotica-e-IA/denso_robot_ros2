@@ -31,6 +31,8 @@
 
 #include <moveit/move_group_interface/move_group_interface.h>
 
+#include "denso_collab/alignment_pose.hpp"
+
 namespace
 {
 
@@ -110,6 +112,8 @@ public:
     end_effector_link_ = declare_parameter<std::string>("tool_link", "left_calib_link");
     target_link_ = declare_parameter<std::string>("target_link", "left_camera_depth_optical_frame");
     holder_frame_ = declare_parameter<std::string>("holder_frame", "right_cellphone_holder_tags_frame");
+    phone_orientation_ = declare_parameter<std::string>("phone_orientation", "vertical");
+    phone_rotation_rad_ = denso_collab::phone_rotation_radians(phone_orientation_);
     approach_distance_m_ = declare_parameter<double>("approach_distance_m");
     sim_touch_approach_distance_m_ = declare_parameter<double>("sim_touch_approach_distance_m", 0.015);
     screen_plane_offset_m_ = declare_parameter<double>("screen_plane_offset_m", 0.0045);
@@ -182,10 +186,7 @@ public:
     move_group_->setNumPlanningAttempts(attempts_);
     move_group_->setMaxVelocityScalingFactor(velocity_);
     move_group_->setMaxAccelerationScalingFactor(acceleration_);
-    constexpr double kPi = 3.14159265358979323846;
-    target_orientation_.setRPY(
-      kPi, 0.0, 0.0);
-    target_orientation_.normalize();
+    target_orientation_ = denso_collab::camera_orientation_in_holder(phone_rotation_rad_);
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(get_clock());
     tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
     goal_publisher_ = create_publisher<geometry_msgs::msg::PoseStamped>(
@@ -478,8 +479,8 @@ private:
       return false;
     }
     RCLCPP_INFO(
-      get_logger(), "Aligning camera %.0f mm from %s", observation_distance_m_ * 1000.0,
-      holder_frame_.c_str());
+      get_logger(), "Aligning camera %.0f mm from %s for %s phone orientation",
+      observation_distance_m_ * 1000.0, holder_frame_.c_str(), phone_orientation_.c_str());
     return plan_and_execute();
   }
 
@@ -731,6 +732,8 @@ private:
   std::string end_effector_link_;
   std::string target_link_;
   std::string holder_frame_;
+  std::string phone_orientation_;
+  double phone_rotation_rad_;
   double approach_distance_m_;
   double sim_touch_approach_distance_m_;
   double screen_plane_offset_m_;

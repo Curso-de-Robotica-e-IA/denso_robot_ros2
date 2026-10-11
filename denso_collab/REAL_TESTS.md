@@ -117,6 +117,31 @@ O braço esquerdo toca os alvos em ordem espacial. O braço direito fica fixo.
 Se o Hall não confirmar contato, a sequência para; inspecione o robô antes de
 iniciar outro lote.
 
+## Teste com o celular horizontal
+
+O modo horizontal gira o suporte direito 90 graus no sentido anti-horário e
+mantém a câmera esquerda na orientação vertical em relação ao mundo. Para
+validar apenas o planejamento da nova pose sem mover os robôs, use:
+
+```bash
+ros2 run denso_collab random_collab_pose --ros-args \
+  -p sim:=false -p plan_only:=true -p phone_orientation:=horizontal
+```
+
+Depois execute um único lote supervisionado:
+
+```bash
+ros2 launch denso_collab screen_approach.launch.py \
+  image_source:=realsense image_topic:=/left_basic_camera \
+  use_random_holder_pose:=true phone_orientation:=horizontal \
+  approach_plan_only:=false touch_enabled:=true sim:=false
+```
+
+Nesse modo, a imagem deve mostrar os tags na ordem `2 3 / 1 4`. A ordem
+vertical padrão é `1 2 / 4 3`.
+Se usar `use_random_holder_pose:=false`, posicione primeiro o suporte na
+horizontal; esse modo não movimenta o braço direito.
+
 ## Próximo lote
 
 Mantenha os robôs fixos (`use_random_holder_pose:=false`) e altere apenas uma

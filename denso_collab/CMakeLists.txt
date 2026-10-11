@@ -27,6 +27,7 @@ ament_target_dependencies(move_to_screen_standoff
   tf2
   tf2_geometry_msgs
   tf2_ros)
+target_include_directories(move_to_screen_standoff PRIVATE include)
 
 add_executable(align_tool src/align_tool.cpp)
 ament_target_dependencies(align_tool

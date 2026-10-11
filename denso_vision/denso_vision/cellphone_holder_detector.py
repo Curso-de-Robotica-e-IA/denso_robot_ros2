@@ -19,7 +19,9 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Float64, Float64MultiArray, MultiArrayDimension
 from tf2_ros import Buffer, TransformException, TransformListener
 
-from denso_vision.holder_geometry import HolderGeometry, transform_pixel
+from denso_vision.holder_geometry import (
+    HolderGeometry, image_tag_order, transform_pixel,
+)
 from denso_vision.colored_targets import (
     DEFAULT_HSV, StableTargets, detect_targets, validate_targets,
 )
@@ -33,6 +35,7 @@ class CellphoneHolderDetector(Node):
         super().__init__('cellphone_holder_detector')
 
         self.declare_parameter('image_source', 'realsense')
+        self.declare_parameter('sim', False)
         self.declare_parameter('image_topic', '/basic_camera')
         self.declare_parameter('video_path', '')
         self.declare_parameter('video_loop', True)
@@ -49,6 +52,9 @@ class CellphoneHolderDetector(Node):
             'holder_frame_id', 'right_cellphone_holder_tags_frame'
         )
         self.declare_parameter('tag_ids', [1, 2, 3, 4])
+        self.declare_parameter('phone_orientation', 'vertical')
+        self.declare_parameter('vertical_image_tag_order', [1, 2, 4, 3])
+        self.declare_parameter('horizontal_image_tag_order', [2, 3, 1, 4])
         self.declare_parameter('tag_size_mm', 21.5)
         self.declare_parameter('top_spacing_mm', 95.2)
         self.declare_parameter('bottom_spacing_mm', 99.8)
@@ -73,6 +79,9 @@ class CellphoneHolderDetector(Node):
         for color, bounds in DEFAULT_HSV.items():
             for index, value in enumerate(bounds):
                 self.declare_parameter(f'{color}_hsv_{index}', list(value))
+                self.declare_parameter(
+                    f'sim_{color}_hsv_{index}', list(value)
+                )
 
         self._roi = tuple(
             self.get_parameter(f'target_roi_{axis}_{side}_mm').value * 0.001
@@ -80,8 +89,11 @@ class CellphoneHolderDetector(Node):
         )
         if self._roi[0] >= self._roi[1] or self._roi[2] >= self._roi[3]:
             raise ValueError('Target ROI minimum must be less than maximum')
+        hsv_prefix = 'sim_' if self.get_parameter('sim').value else ''
         self._hsv_ranges = {
-            color: tuple(tuple(self.get_parameter(f'{color}_hsv_{index}').value)
+            color: tuple(tuple(self.get_parameter(
+                f'{hsv_prefix}{color}_hsv_{index}'
+            ).value)
                          for index in range(len(bounds)))
             for color, bounds in DEFAULT_HSV.items()
         }
@@ -99,6 +111,24 @@ class CellphoneHolderDetector(Node):
         )
         if len(self._tag_ids) != 4 or len(set(self._tag_ids)) != 4:
             raise ValueError('tag_ids must contain four distinct IDs')
+        self._phone_orientation = self.get_parameter(
+            'phone_orientation'
+        ).value.lower()
+        if self._phone_orientation not in ('vertical', 'horizontal'):
+            raise ValueError(
+                'phone_orientation must be vertical or horizontal'
+            )
+        order_parameter = f'{self._phone_orientation}_image_tag_order'
+        self._expected_image_tag_order = tuple(
+            int(value) for value in self.get_parameter(order_parameter).value
+        )
+        if (
+            len(self._expected_image_tag_order) != 4 or
+            set(self._expected_image_tag_order) != set(self._tag_ids)
+        ):
+            raise ValueError(
+                f'{order_parameter} must contain each configured tag ID once'
+            )
 
         to_metres = 0.001
         self._geometry = HolderGeometry(
@@ -248,7 +278,9 @@ class CellphoneHolderDetector(Node):
             'video': self.get_parameter('video_path').value,
         }[self._image_source]
         self.get_logger().info(
-            f'Looking for AprilTag 36h10 IDs {self._tag_ids} on {source}'
+            f'Looking for AprilTag 36h10 IDs {self._tag_ids} on {source}; '
+            f'phone={self._phone_orientation}, expected image order='
+            f'{self._expected_image_tag_order}'
         )
 
     def destroy_node(self):
@@ -406,6 +438,23 @@ class CellphoneHolderDetector(Node):
             return None
         return np.concatenate([by_id[tag_id] for tag_id in self._tag_ids])
 
+    def _image_tag_order(
+        self, corners: list, ids: Optional[np.ndarray]
+    ) -> Optional[tuple]:
+        """Return the observed TL, TR, BL, BR order when all tags exist."""
+        if ids is None:
+            return None
+        centres: Dict[int, np.ndarray] = {}
+        for tag_corners, tag_id in zip(corners, ids.flatten()):
+            numeric_id = int(tag_id)
+            if numeric_id in self._tag_ids and numeric_id not in centres:
+                centres[numeric_id] = np.asarray(
+                    tag_corners, dtype=np.float64
+                ).reshape(4, 2).mean(axis=0)
+        if len(centres) != 4:
+            return None
+        return image_tag_order(centres)
+
     def _publish_corners(
         self, image_message: Image, points: np.ndarray
     ) -> None:
@@ -539,11 +588,12 @@ class CellphoneHolderDetector(Node):
         gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = self._detect(gray_image)
         ordered_points = self._ordered_detections(corners, ids)
+        observed_order = self._image_tag_order(corners, ids)
 
         # Gazebo's lit tag textures can lose the white border contrast needed
         # by the adaptive detector. Keep the normal path first; use a binary
         # image only when it did not recover all four known tags.
-        if ordered_points is None:
+        if ordered_points is None and observed_order is None:
             _, binary_image = cv2.threshold(
                 gray_image,
                 self.get_parameter('fallback_binary_threshold').value,
@@ -560,11 +610,29 @@ class CellphoneHolderDetector(Node):
                     fallback_ids,
                     fallback_points,
                 )
+                observed_order = self._image_tag_order(corners, ids)
 
         detected_tag_ids = set() if ids is None else set(ids.flatten())
         overlay_lines = [
-            f'Tags: {len(detected_tag_ids & set(self._tag_ids))}/4'
+            f'Tags: {len(detected_tag_ids & set(self._tag_ids))}/4',
+            f'Phone: {self._phone_orientation}',
         ]
+        if observed_order is not None:
+            observed_text = ' '.join(str(value) for value in observed_order)
+            expected_text = ' '.join(
+                str(value) for value in self._expected_image_tag_order
+            )
+            overlay_lines.append(
+                f'Tag order: {observed_text} (expected {expected_text})'
+            )
+            if observed_order != self._expected_image_tag_order:
+                ordered_points = None
+                self._save_diagnostic(
+                    raw_image,
+                    f'Tag order {observed_order} does not match '
+                    f'{self._phone_orientation} mode '
+                    f'{self._expected_image_tag_order}',
+                )
 
         if ids is not None:
             cv2.aruco.drawDetectedMarkers(color_image, corners, ids)
@@ -634,13 +702,26 @@ class CellphoneHolderDetector(Node):
                         else:
                             if not self._saved_layout:
                                 os.makedirs(self._diagnostic_dir, exist_ok=True)
-                                stem = os.path.join(self._diagnostic_dir, f'layout_{time.time_ns()}')
+                                stem = os.path.join(
+                                    self._diagnostic_dir,
+                                    f'layout_{time.time_ns()}',
+                                )
                                 if not cv2.imwrite(stem + '.png', raw_image):
-                                    self.get_logger().error(f'Could not save target layout: {stem}.png')
+                                    self.get_logger().error(
+                                        'Could not save target layout: '
+                                        f'{stem}.png'
+                                    )
                                     return
                                 with open(stem + '.json', 'w', encoding='utf-8') as output:
-                                    json.dump([target.__dict__ for target in targets], output, indent=2)
-                                self.get_logger().info(f'Saved stable target layout: {stem}.png/.json')
+                                    json.dump(
+                                        [target.__dict__ for target in targets],
+                                        output,
+                                        indent=2,
+                                    )
+                                self.get_logger().info(
+                                    'Saved stable target layout: '
+                                    f'{stem}.png/.json'
+                                )
                                 self._saved_layout = True
                             data = []
                             for target in targets:

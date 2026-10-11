@@ -25,6 +25,11 @@ def generate_launch_description():
             description='Image input: video, topic, or realsense',
         ),
         DeclareLaunchArgument('image_topic', default_value='/basic_camera'),
+        DeclareLaunchArgument('sim', default_value='false'),
+        DeclareLaunchArgument(
+            'phone_orientation', default_value='vertical',
+            description='Phone pose: vertical or horizontal (+90 deg CCW)',
+        ),
         DeclareLaunchArgument('video_path', default_value=''),
         DeclareLaunchArgument('video_loop', default_value='true'),
         DeclareLaunchArgument('video_fps', default_value='0.0'),
@@ -42,8 +47,14 @@ def generate_launch_description():
             output='screen',
             parameters=[config, {
                 'image_source': LaunchConfiguration('image_source'),
+                'sim': ParameterValue(
+                    LaunchConfiguration('sim'), value_type=bool
+                ),
                 'image_topic': LaunchConfiguration('image_topic'),
                 'video_path': LaunchConfiguration('video_path'),
+                'phone_orientation': ParameterValue(
+                    LaunchConfiguration('phone_orientation'), value_type=str
+                ),
                 'video_loop': ParameterValue(
                     LaunchConfiguration('video_loop'), value_type=bool
                 ),

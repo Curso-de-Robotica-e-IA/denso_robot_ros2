@@ -15,6 +15,11 @@ cellphone_holder_detector:
     undistort_realsense_color: true
     holder_frame_id: right_cellphone_holder_tags_frame
     tag_ids: [1, 2, 3, 4]
+    # Expected tag-centre order in the camera image, row by row. The holder
+    # rotates +90 deg counterclockwise when phone_orientation=horizontal.
+    phone_orientation: vertical
+    vertical_image_tag_order: [1, 2, 4, 3]
+    horizontal_image_tag_order: [2, 3, 1, 4]
     tag_size_mm: 21.5
     top_spacing_mm: 95.2
     bottom_spacing_mm: 99.8
@@ -37,6 +42,16 @@ cellphone_holder_detector:
     green_hsv_1: [85, 255, 255]
     blue_hsv_0: [86, 80, 160]
     blue_hsv_1: [130, 255, 255]
+    # Gazebo lighting renders the same targets much darker than the D405.
+    # These ranges are selected automatically only when sim=true.
+    sim_red_hsv_0: [0, 60, 30]
+    sim_red_hsv_1: [18, 255, 255]
+    sim_red_hsv_2: [170, 60, 30]
+    sim_red_hsv_3: [179, 255, 255]
+    sim_green_hsv_0: [45, 50, 30]
+    sim_green_hsv_1: [85, 255, 255]
+    sim_blue_hsv_0: [86, 80, 30]
+    sim_blue_hsv_1: [130, 255, 255]
     # Holder-plane bounds exclude the tags and the phone's top controls.
     target_roi_x_min_mm: -50.0
     target_roi_x_max_mm: 50.0

@@ -2,7 +2,7 @@
 
 import math
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Tuple
 
 import numpy as np
 
@@ -94,3 +94,19 @@ def transform_pixel(homography: np.ndarray, pixel: np.ndarray) -> np.ndarray:
     if abs(scale) < 1e-12:
         raise ValueError('pixel maps to infinity under this homography')
     return plane_homogeneous[:2] / scale
+
+
+def image_tag_order(tag_centres: Dict[int, np.ndarray]) -> Tuple[int, ...]:
+    """Return four tag IDs in image row order: TL, TR, BL, BR.
+
+    Image Y grows downwards. Splitting the four centres into two rows before
+    sorting each row by X remains useful when the holder is mildly tilted.
+    """
+    if len(tag_centres) != 4:
+        raise ValueError('image_tag_order requires exactly four tag centres')
+    by_y = sorted(
+        tag_centres.items(), key=lambda item: float(item[1][1])
+    )
+    top = sorted(by_y[:2], key=lambda item: float(item[1][0]))
+    bottom = sorted(by_y[2:], key=lambda item: float(item[1][0]))
+    return tuple(tag_id for tag_id, _ in top + bottom)

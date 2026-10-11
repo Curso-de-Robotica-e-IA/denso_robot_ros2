@@ -7,7 +7,8 @@ approach in simulation:
 ```bash
 ros2 launch denso_robot_bringup dual_denso_robot_bringup.launch.py \
   model:=vs050 sim:=true rviz:=true use_servo:=true \
-  left_hall_touch_camera:=true right_cellphone_holder:=true right_virtual_phone:=true
+  left_hall_touch_camera:=true right_cellphone_holder:=true right_virtual_phone:=true \
+  left_servo_check_collisions:=false
 ```
 
 For the real dual VS050 installation, `sim:=false` automatically uses
@@ -102,6 +103,29 @@ robots' current poses. For a connected RealSense, omit the image arguments;
 `image_source:=realsense` is the default. Check camera access separately first:
 random motion happens before the detector opens the camera.
 
+### Horizontal phone
+
+Set `phone_orientation:=horizontal` to rotate the right holder 90 degrees
+counterclockwise while keeping the left camera upright relative to the world:
+
+```bash
+ros2 launch denso_collab screen_approach.launch.py \
+  image_source:=realsense image_topic:=/left_basic_camera \
+  use_random_holder_pose:=true phone_orientation:=horizontal \
+  approach_plan_only:=false touch_enabled:=true sim:=false
+```
+
+The detector then expects the image order `2 3 / 1 4`. Vertical mode remains
+the default and expects `1 2 / 4 3`. Both orders are configured in
+`denso_vision/config/cellphone_holder.yaml`. The order check selects the
+correct physical orientation; the homography still uses all 16 measured tag
+corners and the same holder-local screen coordinates.
+
+With `use_random_holder_pose:=false`, this parameter does not move the right
+robot. Use that combination only when the holder is already horizontal. With
+`approach_plan_only:=true`, all trajectories are planned but neither robot is
+moved.
+
 With `image_source:=realsense`, the detector opens the D405 itself and
 publishes the rectified image on `image_topic` (for example `/left_basic_camera`) and
 the annotated detection view on `/debug_image`. In RViz, add an `Image` display
@@ -153,13 +177,12 @@ the 35 mm approach travel bound, and the 30 s timeout are configured in
 `cellphone_collab.yaml`. The real mode accepts at most 200 mm/s approach and
 400 mm/s retraction.
 In simulation with touch enabled, the standoff is 15 mm from the virtual
-screen surface; on the real setup it is 30 mm from the physical screen. The
-simulated phone is another robot link,
-so the bringup selects a 1 mm Servo **self-collision proximity** margin only in
-this configuration; collision checking stays enabled and the real-robot margin
-remains 10 mm. Do not treat the 2 mm geometric signal as a validated
-force/contact sensor or an Android touch event. Confirm a single touch under
-supervision before using `test_runs` with touch enabled.
+screen surface; on the real setup it is 30 mm from the physical screen. Start
+the simulated bringup with `left_servo_check_collisions:=false`: the virtual
+screen is part of the robot model and otherwise Servo halts at the intentional
+contact. OMPL planning collision checks remain enabled, and `sim_touch_contact`
+stops the probe from TF geometry. Do not treat this geometric signal as a
+validated force/contact sensor or an Android touch event.
 
 Edit [cellphone_collab.yaml](config/cellphone_collab.yaml) for observation and
 approach distances, motion limits, planning, and calibration. Edit
