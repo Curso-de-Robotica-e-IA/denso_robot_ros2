@@ -33,6 +33,8 @@ setup(
         'console_scripts': [
             'cellphone_holder_detector = '
             'denso_vision.cellphone_holder_detector:main',
+            'debug_video_recorder = '
+            'denso_vision.debug_video_recorder:main',
         ],
     },
 )

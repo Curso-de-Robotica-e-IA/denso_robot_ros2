@@ -31,3 +31,6 @@ dist/
 # Temporary files
 *.tmp
 *.bak
+
+# Locally recorded detector videos
+debug_videos/

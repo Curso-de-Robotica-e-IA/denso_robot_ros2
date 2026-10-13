@@ -56,6 +56,36 @@ ros2 launch denso_vision cellphone_holder_vision.launch.py \
   image_source:=realsense image_topic:=/left_basic_camera
 ```
 
+Para uma tela clara cercada por um ambiente escuro, a aquisição direta usa a
+região da tela calculada pela homografia para controlar a exposição automática.
+Por padrão, o shutter é limitado a 12000 us e o ganho a 32. Ajuste os limites
+no launch se a tela continuar saturada:
+
+```bash
+ros2 launch denso_vision cellphone_holder_vision.launch.py \
+  image_source:=realsense image_topic:=/left_basic_camera \
+  realsense_auto_exposure_limit_us:=8000 \
+  realsense_auto_gain_limit:=24
+```
+
+Para iluminação fixa, é possível eliminar toda variação travando os valores:
+
+```bash
+ros2 launch denso_vision cellphone_holder_vision.launch.py \
+  image_source:=realsense image_topic:=/left_basic_camera \
+  realsense_auto_exposure:=false \
+  realsense_exposure_us:=8000 realsense_gain:=16
+```
+
+Esses argumentos também são aceitos por `screen_approach.launch.py`.
+
+Se ainda não houver um lote RGB válido após 2 segundos, o detector troca
+temporariamente para exposição manual e testa 8, 16, 24, 30, 38 e 45 ms. Ele
+mantém o primeiro valor que produzir um lote completo. A detecção também usa
+realce local de contraste nos AprilTags e um segundo filtro HSV para baixa luz;
+esse segundo resultado só é aceito quando forma trios RGB completos, com a
+mesma quantidade por cor e sem sobreposição.
+
 For offline homography validation, replay an AVI directly. The supplied video
 is looped by default and uses its recorded FPS; `video_loop:=false` stops after
 the final frame.
@@ -65,6 +95,40 @@ ros2 launch denso_vision cellphone_holder_vision.launch.py \
   image_source:=video \
   video_path:='/videos/Realsense 14-09-2026/20260914_165123_compact.avi'
 ```
+
+## Compact debug video
+
+Record only the annotated `debug_image` as an H.264 MP4 instead of storing all
+ROS messages in a bag:
+
+```bash
+ros2 launch denso_vision debug_video_recorder.launch.py \
+  image_topic:=/debug_image record_fps:=15.0
+```
+
+Stop it with `Ctrl+C`. The MP4 and a small JSON metadata file are written to
+`/root/denso_ws/src/denso_robot_ros2/debug_videos`, which is the host directory
+`denso_robot_ros2/debug_videos` with the standard Docker mount. Git ignores
+that directory. The JSON records the topic, codec, dimensions, ROS timestamps,
+and received/written/skipped frame counts.
+
+For a smaller file, record 10 FPS at half resolution:
+
+```bash
+ros2 launch denso_vision debug_video_recorder.launch.py \
+  image_topic:=/debug_image record_fps:=10.0 scale:=0.5
+```
+
+The detector launch can start and stop the recorder with the vision process:
+
+```bash
+ros2 launch denso_vision cellphone_holder_vision.launch.py \
+  image_source:=realsense image_topic:=/left_basic_camera \
+  record_debug_video:=true
+```
+
+The recorder prefers H.264 (`avc1`) and automatically falls back to `mp4v`
+when H.264 is unavailable.
 
 The default target is the centre of each incoming image. Set
 `target_pixel_x` and `target_pixel_y` in the YAML file, or publish a pixel at

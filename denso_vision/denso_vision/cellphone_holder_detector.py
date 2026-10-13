@@ -65,6 +65,20 @@ class CellphoneHolderDetector(Node):
         self.declare_parameter('realsense_width', 1280)
         self.declare_parameter('realsense_height', 720)
         self.declare_parameter('realsense_fps', 30)
+        self.declare_parameter('realsense_auto_exposure', True)
+        self.declare_parameter(
+            'realsense_auto_exposure_limit_us', 12000.0
+        )
+        self.declare_parameter('realsense_auto_gain_limit', 32.0)
+        self.declare_parameter('realsense_exposure_us', 8000.0)
+        self.declare_parameter('realsense_gain', 16.0)
+        self.declare_parameter('realsense_screen_exposure_roi', True)
+        self.declare_parameter('realsense_exposure_recovery', True)
+        self.declare_parameter(
+            'realsense_exposure_recovery_us',
+            [8000.0, 16000.0, 24000.0, 30000.0, 38000.0, 45000.0],
+        )
+        self.declare_parameter('realsense_exposure_recovery_delay_sec', 2.0)
         self.declare_parameter('undistort_realsense_color', True)
         self.declare_parameter(
             'holder_frame_id', 'right_cellphone_holder_tags_frame'
@@ -81,12 +95,16 @@ class CellphoneHolderDetector(Node):
         self.declare_parameter('target_pixel_y', -1.0)
         self.declare_parameter('homography_ransac_threshold_mm', 4.0)
         self.declare_parameter('fallback_binary_threshold', 90)
+        self.declare_parameter('tag_clahe_clip_limit', 2.0)
+        self.declare_parameter('tag_clahe_grid_size', 8)
         self.declare_parameter('publish_debug_image', True)
         self.declare_parameter('debug_tip_link', 'left_calib_link')
         self.declare_parameter('detect_colored_dots', True)
         self.declare_parameter('min_dot_radius_px', 12.0)
         self.declare_parameter('max_dot_radius_px', 150.0)
         self.declare_parameter('min_dot_circularity', 0.75)
+        self.declare_parameter('low_light_value_min', 40)
+        self.declare_parameter('low_light_min_dot_circularity', 0.5)
         self.declare_parameter('target_roi_x_min_mm', -50.0)
         self.declare_parameter('target_roi_x_max_mm', 50.0)
         self.declare_parameter('target_roi_y_min_mm', -100.0)
@@ -123,6 +141,11 @@ class CellphoneHolderDetector(Node):
         self._last_diagnostic = 0.0
         self._saved_layout = False
         self._waiting_since = time.monotonic()
+        self._last_valid_targets = self._waiting_since
+        self._last_exposure_recovery = self._waiting_since
+        self._exposure_recovery_index = 0
+        self._exposure_recovery_locked = False
+        self._using_low_light_detection = False
 
         self._tag_ids = tuple(
             int(value) for value in self.get_parameter('tag_ids').value
@@ -187,6 +210,13 @@ class CellphoneHolderDetector(Node):
             self._detect = lambda image: cv2.aruco.detectMarkers(
                 image, dictionary, parameters=detector_parameters
             )
+        clahe_grid_size = self.get_parameter('tag_clahe_grid_size').value
+        if clahe_grid_size < 2:
+            raise ValueError('tag_clahe_grid_size must be at least 2')
+        self._tag_clahe = cv2.createCLAHE(
+            clipLimit=self.get_parameter('tag_clahe_clip_limit').value,
+            tileGridSize=(clahe_grid_size, clahe_grid_size),
+        )
 
         self._bridge = CvBridge()
         self._requested_pixel: Optional[np.ndarray] = None
@@ -203,6 +233,10 @@ class CellphoneHolderDetector(Node):
         self._video_capture = None
         self._video_timer = None
         self._realsense_image_publisher = None
+        self._realsense_sensor = None
+        self._realsense_roi_sensor = None
+        self._realsense_exposure_roi = None
+        self._last_exposure_roi_update = 0.0
         self._undistort_map_x = None
         self._undistort_map_y = None
         self._undistortion_profile = None
@@ -238,14 +272,18 @@ class CellphoneHolderDetector(Node):
                 rs.format.bgr8,
                 self.get_parameter('realsense_fps').value,
             )
-            self._pipeline.start(realsense_config)
+            pipeline_profile = self._pipeline.start(realsense_config)
+            self._configure_realsense_exposure(pipeline_profile)
             # Direct RealSense acquisition has no camera-driver node to
             # publish an Image topic. Publish the unannotated BGR image so
             # RViz and other ROS consumers can use image_topic uniformly.
             self._realsense_image_publisher = self.create_publisher(
                 Image, image_topic, 10
             )
-            self.create_timer(1.0 / 30.0, self._realsense_callback)
+            self.create_timer(
+                1.0 / self.get_parameter('realsense_fps').value,
+                self._realsense_callback,
+            )
         elif self._image_source == 'video':
             video_path = self.get_parameter('video_path').value
             if not video_path:
@@ -335,6 +373,259 @@ class CellphoneHolderDetector(Node):
         image_message.header = message.header
         self._realsense_image_publisher.publish(image_message)
         self._process_image(message, color_image)
+
+    def _configure_realsense_exposure(self, pipeline_profile) -> None:
+        """Configure stable exposure for a bright screen in a dark scene."""
+        rs = self._rs
+        for sensor in pipeline_profile.get_device().query_sensors():
+            if sensor.supports(rs.option.enable_auto_exposure):
+                self._realsense_sensor = sensor
+                break
+        if self._realsense_sensor is None:
+            self.get_logger().warning(
+                'The active RealSense sensor has no exposure control'
+            )
+            return
+
+        sensor = self._realsense_sensor
+        auto = self.get_parameter('realsense_auto_exposure').value
+        sensor.set_option(rs.option.enable_auto_exposure, 1.0 if auto else 0.0)
+        if auto:
+            self._set_realsense_limit(
+                'auto_exposure_limit', 'auto_exposure_limit_toggle',
+                self.get_parameter(
+                    'realsense_auto_exposure_limit_us'
+                ).value,
+            )
+            self._set_realsense_limit(
+                'auto_gain_limit', 'auto_gain_limit_toggle',
+                self.get_parameter('realsense_auto_gain_limit').value,
+            )
+            self.get_logger().info(
+                'RealSense auto exposure enabled; limits: '
+                f"{self.get_parameter('realsense_auto_exposure_limit_us').value:.0f} "
+                'us, gain '
+                f"{self.get_parameter('realsense_auto_gain_limit').value:.0f}"
+            )
+        else:
+            self._set_realsense_option(
+                rs.option.exposure,
+                self.get_parameter('realsense_exposure_us').value,
+                'realsense_exposure_us',
+            )
+            self._set_realsense_option(
+                rs.option.gain,
+                self.get_parameter('realsense_gain').value,
+                'realsense_gain',
+            )
+            self.get_logger().info(
+                'RealSense manual exposure: '
+                f"{self.get_parameter('realsense_exposure_us').value:.0f} us, "
+                f"gain {self.get_parameter('realsense_gain').value:.0f}"
+            )
+
+        if auto and self.get_parameter(
+            'realsense_screen_exposure_roi'
+        ).value:
+            try:
+                self._realsense_roi_sensor = sensor.as_roi_sensor()
+            except RuntimeError as error:
+                self.get_logger().warning(
+                    f'RealSense exposure ROI is unavailable: {error}'
+                )
+
+    def _set_realsense_limit(
+        self, option_name: str, toggle_name: str, value: float
+    ) -> None:
+        """Enable and set an SDK auto-exposure limit when supported."""
+        option = getattr(self._rs.option, option_name, None)
+        toggle = getattr(self._rs.option, toggle_name, None)
+        sensor = self._realsense_sensor
+        if option is None or toggle is None:
+            return
+        if not sensor.supports(option) or not sensor.supports(toggle):
+            self.get_logger().warning(
+                f'RealSense does not support {option_name}'
+            )
+            return
+        self._set_realsense_option(option, value, option_name)
+        sensor.set_option(toggle, 1.0)
+
+    def _set_realsense_option(
+        self, option, value: float, parameter_name: str
+    ) -> None:
+        """Set a numeric SDK option after validating its advertised range."""
+        sensor = self._realsense_sensor
+        if not sensor.supports(option):
+            raise RuntimeError(
+                f'RealSense does not support {parameter_name}'
+            )
+        option_range = sensor.get_option_range(option)
+        if not option_range.min <= value <= option_range.max:
+            raise ValueError(
+                f'{parameter_name}={value} is outside the RealSense range '
+                f'[{option_range.min}, {option_range.max}]'
+            )
+        sensor.set_option(option, float(value))
+
+    def _recover_realsense_exposure(self, targets_valid: bool) -> None:
+        """Try deterministic shutter values while the initial layout is lost."""
+        if targets_valid:
+            self._last_valid_targets = time.monotonic()
+            if not self._exposure_recovery_locked:
+                self._exposure_recovery_locked = True
+                if self._realsense_sensor is not None:
+                    exposure = self._realsense_sensor.get_option(
+                        self._rs.option.exposure
+                    )
+                    self.get_logger().info(
+                        f'Target exposure locked at {exposure:.0f} us'
+                    )
+            return
+        if (
+            self._realsense_sensor is None or
+            self._exposure_recovery_locked or
+            not self.get_parameter('realsense_exposure_recovery').value
+        ):
+            return
+        now = time.monotonic()
+        delay = self.get_parameter(
+            'realsense_exposure_recovery_delay_sec'
+        ).value
+        if (
+            now - self._last_valid_targets < delay or
+            now - self._last_exposure_recovery < delay
+        ):
+            return
+        candidates = self.get_parameter(
+            'realsense_exposure_recovery_us'
+        ).value
+        if not candidates:
+            return
+        exposure = float(
+            candidates[self._exposure_recovery_index % len(candidates)]
+        )
+        self._exposure_recovery_index += 1
+        sensor = self._realsense_sensor
+        sensor.set_option(self._rs.option.enable_auto_exposure, 0.0)
+        self._set_realsense_option(
+            self._rs.option.exposure, exposure,
+            'realsense_exposure_recovery_us',
+        )
+        self._set_realsense_option(
+            self._rs.option.gain,
+            self.get_parameter('realsense_gain').value,
+            'realsense_gain',
+        )
+        self._stable_targets.update([])
+        self._last_exposure_recovery = now
+        self.get_logger().warning(
+            f'No valid layout; trying RealSense exposure {exposure:.0f} us'
+        )
+
+    def _detect_rgb_targets(
+        self, image: np.ndarray, homography: np.ndarray
+    ):
+        """Detect RGB targets, with a validated low-light fallback."""
+        parameters = (
+            self.get_parameter('min_dot_radius_px').value,
+            self.get_parameter('max_dot_radius_px').value,
+        )
+        primary = detect_targets(
+            image, homography, self._roi, *parameters,
+            self._hsv_ranges,
+            self.get_parameter('min_dot_circularity').value,
+        )
+        try:
+            validate_targets(primary, 'rgb')
+        except ValueError:
+            value_min = self.get_parameter('low_light_value_min').value
+            low_light_ranges = {}
+            for color, bounds in self._hsv_ranges.items():
+                adjusted = []
+                for index, bound in enumerate(bounds):
+                    if index % 2 == 0:
+                        adjusted.append((bound[0], bound[1], value_min))
+                    else:
+                        adjusted.append(tuple(bound))
+                low_light_ranges[color] = tuple(adjusted)
+            fallback = detect_targets(
+                image, homography, self._roi, *parameters,
+                low_light_ranges,
+                self.get_parameter(
+                    'low_light_min_dot_circularity'
+                ).value,
+            )
+            try:
+                validate_targets(fallback, 'rgb')
+            except ValueError:
+                return max((primary, fallback), key=len), False
+            if not self._using_low_light_detection:
+                self.get_logger().info(
+                    'Using validated low-light RGB detection'
+                )
+            self._using_low_light_detection = True
+            return fallback, True
+        self._using_low_light_detection = False
+        return primary, True
+
+    def _update_realsense_exposure_roi(
+        self, homography: np.ndarray, image_shape: tuple
+    ) -> None:
+        """Meter auto exposure on the phone screen derived from homography."""
+        if self._realsense_roi_sensor is None:
+            return
+        try:
+            x_min, x_max, y_min, y_max = self._roi
+            holder_corners = np.array([[
+                [x_min, y_min], [x_max, y_min],
+                [x_max, y_max], [x_min, y_max],
+            ]], dtype=np.float64)
+            image_corners = cv2.perspectiveTransform(
+                holder_corners, np.linalg.inv(homography)
+            )[0]
+        except (cv2.error, np.linalg.LinAlgError):
+            return
+        if not np.all(np.isfinite(image_corners)):
+            return
+
+        height, width = image_shape[:2]
+        minimum = np.floor(image_corners.min(axis=0)).astype(int)
+        maximum = np.ceil(image_corners.max(axis=0)).astype(int)
+        roi = (
+            int(np.clip(minimum[0], 0, width - 2)),
+            int(np.clip(minimum[1], 0, height - 2)),
+            int(np.clip(maximum[0], 1, width - 1)),
+            int(np.clip(maximum[1], 1, height - 1)),
+        )
+        if roi[2] - roi[0] < 16 or roi[3] - roi[1] < 16:
+            return
+        now = time.monotonic()
+        if self._realsense_exposure_roi is not None:
+            movement = max(
+                abs(current - previous)
+                for current, previous in zip(
+                    roi, self._realsense_exposure_roi
+                )
+            )
+            if movement < 12 or now - self._last_exposure_roi_update < 0.5:
+                return
+
+        sdk_roi = self._rs.region_of_interest()
+        sdk_roi.min_x, sdk_roi.min_y, sdk_roi.max_x, sdk_roi.max_y = roi
+        try:
+            self._realsense_roi_sensor.set_region_of_interest(sdk_roi)
+        except RuntimeError as error:
+            self.get_logger().warning(
+                f'Could not update RealSense exposure ROI: {error}'
+            )
+            self._realsense_roi_sensor = None
+            return
+        self._realsense_exposure_roi = roi
+        self._last_exposure_roi_update = now
+        self.get_logger().info(
+            f'RealSense exposure ROI set to screen pixels {roi}'
+        )
 
     def _undistort_realsense_color(
         self, color_frame, image: np.ndarray
@@ -608,14 +899,29 @@ class CellphoneHolderDetector(Node):
         """Detect tags and publish homography results for one BGR image."""
         raw_image = color_image.copy()
         targets_processed = False
+        targets_valid = False
         gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = self._detect(gray_image)
         ordered_points = self._ordered_detections(corners, ids)
         observed_order = self._image_tag_order(corners, ids)
 
-        # Gazebo's lit tag textures can lose the white border contrast needed
-        # by the adaptive detector. Keep the normal path first; use a binary
-        # image only when it did not recover all four known tags.
+        # A phone exposed correctly can leave the surrounding paper tags very
+        # dark. Keep the raw image first, then recover local tag contrast with
+        # CLAHE. The binary fallback remains useful for Gazebo's lit textures.
+        if ordered_points is None and observed_order is None:
+            enhanced_image = self._tag_clahe.apply(gray_image)
+            enhanced_corners, enhanced_ids, _ = self._detect(enhanced_image)
+            enhanced_points = self._ordered_detections(
+                enhanced_corners, enhanced_ids
+            )
+            if enhanced_points is not None:
+                corners, ids, ordered_points = (
+                    enhanced_corners,
+                    enhanced_ids,
+                    enhanced_points,
+                )
+                observed_order = self._image_tag_order(corners, ids)
+
         if ordered_points is None and observed_order is None:
             _, binary_image = cv2.threshold(
                 gray_image,
@@ -668,6 +974,9 @@ class CellphoneHolderDetector(Node):
                 self._ransac_threshold,
             )
             if homography is not None and inlier_mask is not None:
+                self._update_realsense_exposure_roi(
+                    homography, color_image.shape
+                )
                 self._publish_corners(message, ordered_points)
                 self._publish_homography(homography)
 
@@ -701,13 +1010,14 @@ class CellphoneHolderDetector(Node):
                     targets_processed = True
                     if self._target_type == 'captcha':
                         targets = self._captcha_detector.detect(raw_image, homography, self._roi)
+                        try:
+                            validate_targets(targets, self._target_type)
+                            targets_valid = True
+                        except ValueError:
+                            pass
                     else:
-                        targets = detect_targets(
-                            raw_image, homography, self._roi,
-                            self.get_parameter('min_dot_radius_px').value,
-                            self.get_parameter('max_dot_radius_px').value,
-                            self._hsv_ranges,
-                            self.get_parameter('min_dot_circularity').value,
+                        targets, targets_valid = self._detect_rgb_targets(
+                            raw_image, homography
                         )
                     self._draw_detected_blobs(color_image, targets)
                     blob_counts = {
@@ -788,6 +1098,7 @@ class CellphoneHolderDetector(Node):
 
         if not targets_processed:
             self._stable_targets.update([])
+        self._recover_realsense_exposure(targets_valid)
         if not self._saved_layout and time.monotonic() - self._waiting_since >= 5.0:
             self._save_diagnostic(
                 raw_image, f'Waiting for stable {self._target_type} targets and four tags'

@@ -57,9 +57,27 @@ def _start_tests(context):
                 'image_source': LaunchConfiguration('image_source'),
                 'image_topic': LaunchConfiguration('image_topic'),
                 'video_path': LaunchConfiguration('video_path'),
+                'realsense_auto_exposure': LaunchConfiguration(
+                    'realsense_auto_exposure'),
+                'realsense_auto_exposure_limit_us': LaunchConfiguration(
+                    'realsense_auto_exposure_limit_us'),
+                'realsense_auto_gain_limit': LaunchConfiguration(
+                    'realsense_auto_gain_limit'),
+                'realsense_screen_exposure_roi': LaunchConfiguration(
+                    'realsense_screen_exposure_roi'),
+                'realsense_exposure_us': LaunchConfiguration(
+                    'realsense_exposure_us'),
+                'realsense_gain': LaunchConfiguration('realsense_gain'),
                 'phone_orientation': phone_orientation,
                 'sim': sim,
                 'target': target_type,
+                'record_debug_video': LaunchConfiguration(
+                    'record_debug_video'),
+                'debug_video_fps': LaunchConfiguration('debug_video_fps'),
+                'debug_video_scale': LaunchConfiguration(
+                    'debug_video_scale'),
+                'debug_video_output_dir': LaunchConfiguration(
+                    'debug_video_output_dir'),
             }.items()))
             if sim == 'true' and touch_enabled == 'true':
                 actions.append(Node(
@@ -123,10 +141,29 @@ def generate_launch_description():
         DeclareLaunchArgument('image_source', default_value='realsense'),
         DeclareLaunchArgument('image_topic', default_value='/basic_camera'),
         DeclareLaunchArgument('video_path', default_value=''),
+        DeclareLaunchArgument(
+            'realsense_auto_exposure', default_value='true'),
+        DeclareLaunchArgument(
+            'realsense_auto_exposure_limit_us', default_value='12000.0'),
+        DeclareLaunchArgument(
+            'realsense_auto_gain_limit', default_value='32.0'),
+        DeclareLaunchArgument(
+            'realsense_screen_exposure_roi', default_value='true'),
+        DeclareLaunchArgument(
+            'realsense_exposure_us', default_value='8000.0'),
+        DeclareLaunchArgument('realsense_gain', default_value='16.0'),
         DeclareLaunchArgument('approach_plan_only', default_value='false'),
         DeclareLaunchArgument('sim', default_value='false'),
         DeclareLaunchArgument('target', default_value='rgb', choices=['rgb', 'captcha']),
         DeclareLaunchArgument('touch_enabled', default_value='false'),
+        DeclareLaunchArgument('record_debug_video', default_value='true'),
+        DeclareLaunchArgument('debug_video_fps', default_value='15.0'),
+        DeclareLaunchArgument('debug_video_scale', default_value='1.0'),
+        DeclareLaunchArgument(
+            'debug_video_output_dir',
+            default_value=(
+                '/root/denso_ws/src/denso_robot_ros2/debug_videos'
+            )),
         DeclareLaunchArgument(
             'phone_orientation', default_value='vertical',
             description='Phone pose: vertical or horizontal (+90 deg CCW)'),

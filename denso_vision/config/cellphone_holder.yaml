@@ -14,6 +14,20 @@ cellphone_holder_detector:
     realsense_width: 1280
     realsense_height: 720
     realsense_fps: 30
+    # Meter the bright phone screen instead of the dark room. Exposure and
+    # gain caps prevent the screen from saturating while keeping tags visible.
+    realsense_auto_exposure: true
+    realsense_auto_exposure_limit_us: 12000.0
+    realsense_auto_gain_limit: 32.0
+    realsense_screen_exposure_roi: true
+    # If the initial layout is still invalid, try these real shutter values
+    # until a valid layout is found, then retain the successful exposure.
+    realsense_exposure_recovery: true
+    realsense_exposure_recovery_us: [8000.0, 16000.0, 24000.0, 30000.0, 38000.0, 45000.0]
+    realsense_exposure_recovery_delay_sec: 2.0
+    # Used only when realsense_auto_exposure is false.
+    realsense_exposure_us: 8000.0
+    realsense_gain: 16.0
     # Rectify direct pyrealsense2 colour frames from their active SDK
     # intrinsics before tag and coloured-circle detection.
     undistort_realsense_color: true
@@ -31,11 +45,19 @@ cellphone_holder_detector:
     target_pixel_x: -1.0
     target_pixel_y: -1.0
     homography_ransac_threshold_mm: 4.0
+    # Local contrast recovery keeps dark paper tags detectable while exposure
+    # is metered on the bright phone screen.
+    tag_clahe_clip_limit: 2.0
+    tag_clahe_grid_size: 8
     stable_frames: 3
     stable_tolerance_px: 3.0
     min_dot_radius_px: 6.0
     max_dot_radius_px: 150.0
     min_dot_circularity: 0.75
+    # Used only when the normal HSV/circularity pass is not a valid RGB batch.
+    # The relaxed result must still contain equal, nonoverlapping RGB trios.
+    low_light_value_min: 40
+    low_light_min_dot_circularity: 0.5
     # Values measured from the D405 frame: the red dot is orange (H=13)
     # and the blue dot is cyan (H=89).
     red_hsv_0: [0, 60, 180]
