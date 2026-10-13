@@ -1,6 +1,10 @@
 cellphone_holder_detector:
   ros__parameters:
     image_source: realsense
+    target: rgb  # rgb or captcha; unchecked English Google test widget
+    captcha_min_side_mm: 3.0
+    captcha_max_side_mm: 9.0
+    captcha_match_threshold: 0.72
     image_topic: /basic_camera
     video_path: ''
     video_loop: true

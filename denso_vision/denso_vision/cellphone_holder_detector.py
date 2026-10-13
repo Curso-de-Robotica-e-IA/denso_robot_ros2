@@ -1,10 +1,11 @@
-"""ROS 2 node for detecting the cellphone holder and its RGB targets."""
+"""ROS 2 node for detecting the cellphone holder and RGB/CAPTCHA targets."""
 
 import json
 import os
 import time
 from typing import Dict, Optional
 
+from ament_index_python.packages import get_package_share_directory
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 from geometry_msgs.msg import Point32
@@ -23,8 +24,9 @@ from denso_vision.holder_geometry import (
     HolderGeometry, image_tag_order, transform_pixel,
 )
 from denso_vision.colored_targets import (
-    DEFAULT_HSV, StableTargets, detect_targets, validate_targets,
+    DEFAULT_HSV, TARGET_KINDS, StableTargets, detect_targets, validate_targets,
 )
+from denso_vision.captcha_targets import CaptchaDetector
 
 
 class CellphoneHolderDetector(Node):
@@ -36,6 +38,22 @@ class CellphoneHolderDetector(Node):
 
         self.declare_parameter('image_source', 'realsense')
         self.declare_parameter('sim', False)
+        self.declare_parameter('target', 'rgb')
+        self.declare_parameter('captcha_min_side_mm', 3.0)
+        self.declare_parameter('captcha_max_side_mm', 9.0)
+        self.declare_parameter('captcha_match_threshold', 0.72)
+        self._target_type = self.get_parameter('target').value
+        if self._target_type not in ('rgb', 'captcha'):
+            raise ValueError('target must be rgb or captcha')
+        self._captcha_detector = None
+        if self._target_type == 'captcha':
+            self._captcha_detector = CaptchaDetector(
+                os.path.join(get_package_share_directory('denso_vision'),
+                             'assets', 'captcha_checkbox.png'),
+                self.get_parameter('captcha_min_side_mm').value,
+                self.get_parameter('captcha_max_side_mm').value,
+                self.get_parameter('captcha_match_threshold').value,
+            )
         self.declare_parameter('image_topic', '/basic_camera')
         self.declare_parameter('video_path', '')
         self.declare_parameter('video_loop', True)
@@ -527,11 +545,12 @@ class CellphoneHolderDetector(Node):
 
     @staticmethod
     def _draw_detected_blobs(image: np.ndarray, targets) -> None:
-        """Draw every accepted RGB blob and its centre on the debug image."""
+        """Draw every target and its centre on the debug image."""
         colors = {
             'red': (0, 0, 255),
             'green': (0, 220, 0),
             'blue': (255, 0, 0),
+            'captcha': (0, 180, 255),
         }
         counts = {color: 0 for color in colors}
         for target in targets:
@@ -539,7 +558,11 @@ class CellphoneHolderDetector(Node):
             color = colors[target.color]
             center = (int(round(target.pixel_x)), int(round(target.pixel_y)))
             radius = max(1, int(round(target.radius_px)))
-            cv2.circle(image, center, radius, color, 2, cv2.LINE_AA)
+            if target.color == 'captcha':
+                cv2.rectangle(image, (center[0] - radius, center[1] - radius),
+                              (center[0] + radius, center[1] + radius), color, 2)
+            else:
+                cv2.circle(image, center, radius, color, 2, cv2.LINE_AA)
             cv2.drawMarker(
                 image, center, color, cv2.MARKER_CROSS, 12, 2, cv2.LINE_AA
             )
@@ -674,21 +697,25 @@ class CellphoneHolderDetector(Node):
                 tip_overlay = self._draw_tip_projection(color_image, homography)
                 if tip_overlay:
                     overlay_lines.append(tip_overlay)
-                if self.get_parameter('detect_colored_dots').value:
+                if self._target_type == 'captcha' or self.get_parameter('detect_colored_dots').value:
                     targets_processed = True
-                    targets = detect_targets(
-                        raw_image, homography, self._roi,
-                        self.get_parameter('min_dot_radius_px').value,
-                        self.get_parameter('max_dot_radius_px').value,
-                        self._hsv_ranges,
-                        self.get_parameter('min_dot_circularity').value,
-                    )
+                    if self._target_type == 'captcha':
+                        targets = self._captcha_detector.detect(raw_image, homography, self._roi)
+                    else:
+                        targets = detect_targets(
+                            raw_image, homography, self._roi,
+                            self.get_parameter('min_dot_radius_px').value,
+                            self.get_parameter('max_dot_radius_px').value,
+                            self._hsv_ranges,
+                            self.get_parameter('min_dot_circularity').value,
+                        )
                     self._draw_detected_blobs(color_image, targets)
                     blob_counts = {
                         color: sum(target.color == color for target in targets)
                         for color in ('red', 'green', 'blue')
                     }
                     overlay_lines.append(
+                        f'Checkboxes: {len(targets)}' if self._target_type == 'captcha' else
                         'Blobs: {} (R:{} G:{} B:{})'.format(
                             len(targets), blob_counts['red'],
                             blob_counts['green'], blob_counts['blue'],
@@ -696,7 +723,7 @@ class CellphoneHolderDetector(Node):
                     )
                     if self._stable_targets.update(targets):
                         try:
-                            validate_targets(targets)
+                            validate_targets(targets, self._target_type)
                         except ValueError as error:
                             self._save_diagnostic(raw_image, str(error))
                         else:
@@ -726,7 +753,7 @@ class CellphoneHolderDetector(Node):
                             data = []
                             for target in targets:
                                 data.extend((
-                                    float(('red', 'green', 'blue').index(target.color)),
+                                    float(TARGET_KINDS.index(target.color)),
                                     target.pixel_x, target.pixel_y, target.radius_px,
                                     target.holder_x, target.holder_y,
                                 ))
@@ -738,7 +765,9 @@ class CellphoneHolderDetector(Node):
                             self._targets_publisher.publish(target_message)
                             self._waiting_since = time.monotonic()
                             for color in ('red', 'green', 'blue'):
-                                target = next(item for item in targets if item.color == color)
+                                target = next((item for item in targets if item.color == color), None)
+                                if target is None:
+                                    continue
                                 point = PointStamped()
                                 point.header = message.header
                                 point.header.frame_id = self._holder_frame_id
@@ -761,7 +790,7 @@ class CellphoneHolderDetector(Node):
             self._stable_targets.update([])
         if not self._saved_layout and time.monotonic() - self._waiting_since >= 5.0:
             self._save_diagnostic(
-                raw_image, 'Waiting for stable RGB targets and four tags'
+                raw_image, f'Waiting for stable {self._target_type} targets and four tags'
             )
         for line_index, line in enumerate(overlay_lines):
             position = (12, 28 + 24 * line_index)

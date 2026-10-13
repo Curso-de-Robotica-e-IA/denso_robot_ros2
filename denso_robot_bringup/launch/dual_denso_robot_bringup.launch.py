@@ -16,10 +16,11 @@
 
 
 import os
+import shlex
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction
 from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
@@ -31,7 +32,6 @@ from launch.substitution import Substitution
 from typing import Iterable
 from typing import Text
 from launch.some_substitutions_type import SomeSubstitutionsType
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
 """ Function for loading a yaml file. """
@@ -83,6 +83,21 @@ class TextJoinSubstitution(Substitution):
         """Perform the substitution by retrieving the local variable."""
         performed_substitutions = [sub.perform(context) for sub in self.__substitutions]
         return self.__sequence.join(performed_substitutions) + self.__sequence + self.__text
+
+
+def launch_simulator(context):
+    world = os.path.join(
+        get_package_share_directory(LaunchConfiguration('description_package').perform(context)),
+        'worlds', 'empty_with_camera_support.sdf')
+    arguments = shlex.split(LaunchConfiguration('gazebo_args').perform(context))
+    # A direct process receives shutdown signals; ros_gz_sim's shell leaves
+    # the Fortress server orphaned and blocks the next simulation run.
+    plugin_path = os.pathsep.join((os.environ.get('IGN_GAZEBO_SYSTEM_PLUGIN_PATH', ''),
+                                  os.environ.get('LD_LIBRARY_PATH', '')))
+    return [ExecuteProcess(
+        cmd=['ign', 'gazebo', *arguments, world, '--force-version', '6'],
+        additional_env={'IGN_GAZEBO_SYSTEM_PLUGIN_PATH': plugin_path},
+        output='screen')]
 
 
 """ Launch Description generator function. """
@@ -226,6 +241,9 @@ def generate_launch_description():
             description='Attach a visual virtual phone to the right holder'
         ))
     declared_arguments.append(
+        DeclareLaunchArgument('target', default_value='rgb', choices=['rgb', 'captcha'],
+                              description='Virtual phone screen content'))
+    declared_arguments.append(
         DeclareLaunchArgument(
             'virtual_phone_width', default_value='0.070',
             description='Virtual phone width in metres'
@@ -310,7 +328,6 @@ def generate_launch_description():
     namespace = LaunchConfiguration('namespace')
     rviz = LaunchConfiguration('rviz')
     sim = LaunchConfiguration('sim')
-    gazebo_args = LaunchConfiguration('gazebo_args')
     use_servo = LaunchConfiguration('use_servo')
     left_servo_check_collisions = LaunchConfiguration('left_servo_check_collisions')
     left_basic_camera = LaunchConfiguration('left_basic_camera')
@@ -378,6 +395,7 @@ def generate_launch_description():
             'left_cellphone_holder:=', left_cellphone_holder, ' ',
             'right_cellphone_holder:=', right_cellphone_holder, ' ',
             'right_virtual_phone:=', right_virtual_phone, ' ',
+            'target:=', LaunchConfiguration('target'), ' ',
             'virtual_phone_width:=', virtual_phone_width, ' ',
             'virtual_phone_height:=', virtual_phone_height, ' ',
             'virtual_phone_thickness:=', virtual_phone_thickness, ' ',
@@ -557,26 +575,7 @@ def generate_launch_description():
         ])
 
 # --------- Gazebo Nodes (only if 'sim:=true') ---------
-    ros_gz_sim = get_package_share_directory('ros_gz_sim')
-
-    world = PathJoinSubstitution([
-        FindPackageShare(LaunchConfiguration('description_package')),
-        'worlds',
-        'empty_with_camera_support.sdf'
-    ])
-    
-    gazebo = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([
-                FindPackageShare('ros_gz_sim'),
-                'launch',
-                'gz_sim.launch.py'
-            ])
-        ),
-        launch_arguments={'gz_args': [gazebo_args, ' ', world]}.items(), #'-r' == run simulation on start (without this flag gazebo not connect with ros2_controllers)
-                                                                  #'-v 4' == verbose level 4 (max level of console output)
-        condition=IfCondition(sim)
-    )
+    gazebo = OpaqueFunction(function=launch_simulator, condition=IfCondition(sim))
 
     clock_bridge = Node(
         package='ros_gz_bridge',

@@ -26,6 +26,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument('image_topic', default_value='/basic_camera'),
         DeclareLaunchArgument('sim', default_value='false'),
+        DeclareLaunchArgument('target', default_value='rgb', choices=['rgb', 'captcha']),
         DeclareLaunchArgument(
             'phone_orientation', default_value='vertical',
             description='Phone pose: vertical or horizontal (+90 deg CCW)',
@@ -47,6 +48,7 @@ def generate_launch_description():
             output='screen',
             parameters=[config, {
                 'image_source': LaunchConfiguration('image_source'),
+                'target': LaunchConfiguration('target'),
                 'sim': ParameterValue(
                     LaunchConfiguration('sim'), value_type=bool
                 ),

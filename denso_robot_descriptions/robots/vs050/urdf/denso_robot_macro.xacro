@@ -36,6 +36,7 @@
     cellphone_holder_mesh_scale:='0.001 0.001 0.001'
     cellphone_holder_tag_size:=0.026875
     virtual_phone:=false
+    virtual_phone_target:=rgb
     virtual_phone_width:=0.070
     virtual_phone_height:=0.150
     virtual_phone_thickness:=0.008
@@ -156,6 +157,7 @@
         mesh_scale="${cellphone_holder_mesh_scale}"
         tag_size="${cellphone_holder_tag_size}"
         virtual_phone="${virtual_phone}"
+        virtual_phone_target="${virtual_phone_target}"
         virtual_phone_width="${virtual_phone_width}"
         virtual_phone_height="${virtual_phone_height}"
         virtual_phone_thickness="${virtual_phone_thickness}"

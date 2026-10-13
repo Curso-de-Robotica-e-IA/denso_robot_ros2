@@ -32,6 +32,7 @@
 #include <moveit/move_group_interface/move_group_interface.h>
 
 #include "denso_collab/alignment_pose.hpp"
+#include "denso_collab/target_batch.hpp"
 
 namespace
 {
@@ -112,6 +113,10 @@ public:
     end_effector_link_ = declare_parameter<std::string>("tool_link", "left_calib_link");
     target_link_ = declare_parameter<std::string>("target_link", "left_camera_depth_optical_frame");
     holder_frame_ = declare_parameter<std::string>("holder_frame", "right_cellphone_holder_tags_frame");
+    target_type_ = declare_parameter<std::string>("target", "rgb");
+    if (target_type_ != "rgb" && target_type_ != "captcha") {
+      throw std::runtime_error("target must be rgb or captcha");
+    }
     phone_orientation_ = declare_parameter<std::string>("phone_orientation", "vertical");
     phone_rotation_rad_ = denso_collab::phone_rotation_radians(phone_orientation_);
     approach_distance_m_ = declare_parameter<double>("approach_distance_m");
@@ -300,11 +305,11 @@ private:
       detection_timer_ = create_wall_timer(
         std::chrono::duration<double>(detection_timeout_sec_), [this]() {
           if (!started_) {
-            RCLCPP_ERROR(get_logger(), "Timed out waiting for stable RGB targets");
+            RCLCPP_ERROR(get_logger(), "Timed out waiting for stable %s targets", target_type_.c_str());
             finish(false);
           }
         });
-      RCLCPP_INFO(get_logger(), "Camera aligned; waiting for stable RGB targets");
+      RCLCPP_INFO(get_logger(), "Camera aligned; waiting for stable %s targets", target_type_.c_str());
     } else {
       finish(false);
     }
@@ -321,37 +326,24 @@ private:
       RCLCPP_ERROR(get_logger(), "Detected target frame does not match %s", holder_frame_.c_str());
       return;
     }
-    // Each row is [RGB index, pixel x, pixel y, radius px, holder x m, holder y m].
-    if (message->data.empty() || message->data.size() % 18 != 0 ||
-      message->layout.dim[0].size != message->data.size() / 6)
+    // Each row is [kind (0=R,1=G,2=B,3=CAPTCHA), pixel x/y, size px, holder x/y m].
+    if (message->layout.dim[0].size != message->data.size() / 6 ||
+      !denso_collab::valid_target_batch(message->data, target_type_))
     {
-      RCLCPP_ERROR(get_logger(), "Detected targets do not form complete RGB trios");
+      RCLCPP_ERROR(get_logger(), "Invalid %s target batch", target_type_.c_str());
       return;
     }
-    const std::vector<std::string> colors{"red", "green", "blue"};
+    const std::vector<std::string> colors{"red", "green", "blue", "captcha"};
     std::vector<Target> incoming;
-    std::vector<int> counts(3, 0);
     for (std::size_t index = 0; index < message->data.size(); index += 6) {
       const auto * row = &message->data[index];
-      if (!std::all_of(row, row + 6, [](double value) {return std::isfinite(value);}) ||
-        row[0] < 0.0 || row[0] > 2.0 || row[0] != std::floor(row[0]) || row[3] <= 0.0)
-      {
-        RCLCPP_ERROR(get_logger(), "Invalid target entry in detected_targets");
-        return;
-      }
       const auto color = static_cast<std::size_t>(row[0]);
-      ++counts[color];
       Target target{colors[color], row[1], row[2], row[3],
         geometry_msgs::msg::PointStamped()};
       target.point.header.frame_id = holder_frame_;
       target.point.point.x = row[4];
       target.point.point.y = row[5];
       incoming.push_back(target);
-    }
-    if (counts[0] != counts[1] || counts[1] != counts[2]) {
-      RCLCPP_ERROR(get_logger(), "Detected RGB counts are unequal: red=%d green=%d blue=%d",
-        counts[0], counts[1], counts[2]);
-      return;
     }
     std::sort(incoming.begin(), incoming.end(), [](const Target & a, const Target & b) {
       return a.pixel_y == b.pixel_y ? a.pixel_x < b.pixel_x : a.pixel_y < b.pixel_y;
@@ -732,6 +724,7 @@ private:
   std::string end_effector_link_;
   std::string target_link_;
   std::string holder_frame_;
+  std::string target_type_;
   std::string phone_orientation_;
   double phone_rotation_rad_;
   double approach_distance_m_;

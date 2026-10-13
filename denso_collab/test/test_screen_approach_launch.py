@@ -16,12 +16,13 @@ spec.loader.exec_module(module)
 module.get_package_share_directory = lambda name: '/tmp/' + name
 
 
-def start(runs, random, sim=False, touch=False, orientation='vertical'):
+def start(runs, random, sim=False, touch=False, orientation='vertical', target='rgb'):
     context = LaunchContext()
     context.launch_configurations.update({
         'test_runs': str(runs), 'use_random_holder_pose': str(random).lower(),
         'sim': str(sim).lower(), 'touch_enabled': str(touch).lower(),
         'phone_orientation': orientation,
+        'target': target,
     })
     return module._start_tests(context)
 
@@ -35,6 +36,8 @@ def exit_actions(actions, code):
 assert isinstance(start(0, True)[0], EmitEvent)
 assert isinstance(start(101, True)[0], EmitEvent)
 assert isinstance(start(1, True, orientation='sideways')[0], EmitEvent)
+assert isinstance(start(1, True, target='unknown')[0], EmitEvent)
+assert any(isinstance(a, IncludeLaunchDescription) for a in start(1, False, target='captcha'))
 
 horizontal = start(1, True, orientation='horizontal')
 assert any(

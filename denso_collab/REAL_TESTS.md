@@ -1,150 +1,88 @@
-# Teste real: DENSO, D405, Hall e celular
+# Testes reais — DENSO, D405, Hall e app
 
-Use quatro terminais. Não execute outro `touch_ros2.py`, monitor serial ou
-`realsense-viewer` enquanto este teste estiver ativo.
-
-## 1. Docker
-
-No host:
-
-```bash
-cd /home/pcgr/code/denso/denso_docker
-docker start denso_container
-docker exec -it denso_container bash
-```
-
-Se `denso_container` ainda não existir, crie-o uma vez com
-`docker compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d`.
-Use `--build` somente quando o Dockerfile ou as dependências da imagem forem
-alterados.
-
-Em cada terminal dentro do contêiner:
+Em cada terminal ROS, com o workspace já compilado:
 
 ```bash
 source /opt/ros/humble/setup.bash
 source /root/denso_ws/install/setup.bash
 ```
 
-## 2. ESP32 Hall — terminal A
+## 1. Bringup — terminal A
 
-```bash
-/usr/bin/python3 /finger-sensor/touch_ros2.py \
-  --ros-args -p port:=/dev/ttyUSB0
-```
-
-Em outro terminal, confirme que o sinal está fresco antes de mover o robô:
-
-```bash
-ros2 daemon stop
-ros2 topic echo /touch_detected
-```
-
-O estado normal é `data: false`. Ao pressionar o sensor, deve aparecer
-`data: true`. Se a ESP32 estiver em outra porta, troque `/dev/ttyUSB0` por
-`/dev/ttyACM0`.
-
-## 3. Robôs reais — terminal B
-
-Os IPs padrão são esquerdo `192.168.160.228` e direito `192.168.160.227`.
-O `left_calib_link` usa por padrão os offsets locais `X=-2 mm` e `Y=-1 mm`.
-Para voltar à posição antiga, acrescente
-`left_hall_touch_calib_offset_x_mm:=0.0
-left_hall_touch_calib_offset_y_mm:=0.0` ao comando.
+Abre os robôs, MoveIt, RViz e Servo; não inicia o teste.
+IPs padrão: esquerdo `192.168.160.228`, direito `192.168.160.227`.
 
 ```bash
 ros2 launch denso_robot_bringup dual_denso_robot_bringup.launch.py \
   model:=vs050 sim:=false rviz:=true use_servo:=true \
   left_basic_camera:=false left_hall_touch_camera:=true \
-  right_cellphone_holder:=true right_virtual_phone:=false \
-  left_servo_check_collisions:=false
+  right_cellphone_holder:=true right_virtual_phone:=false
 ```
 
-Espere RViz, `move_group` e os dois controladores ficarem ativos. Mantenha
-este terminal aberto durante todos os lotes.
+Mantenha esse terminal aberto. Confirme ambos os controladores de trajetória
+e o joint-state broadcaster `active` com `ros2 control list_controllers`.
+Não desative a verificação de colisões do Servo para contornar uma falha no real.
 
-## 4. Aplicativo do celular
+## 2. Sensor e app
 
-No host, instale a versão atual e abra o app:
+Em outro terminal, inicie o bridge do repositório `finger-sensor`
+(exemplo quando montado em `/finger-sensor`):
 
 ```bash
-cd /home/pcgr/code/denso/robot-touch-test-app
-JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 \
-PATH=/usr/lib/jvm/java-21-openjdk-amd64/bin:$PATH \
-./gradlew installDebug --no-daemon
+/usr/bin/python3 /finger-sensor/touch_ros2.py --ros-args -p port:=/dev/ttyUSB0
 ```
 
-No app, em **Settings**:
+Confira `ros2 topic echo /touch_detected`: publicação contínua, `false` em
+repouso e `true` ao pressionar. Ajuste a porta USB se necessário.
+No app, escolha RGB ou CAPTCHA e gere os alvos; mantenha os quatro tags visíveis.
+CAPTCHA usa o checkbox de teste do Google, requer internet e começa com um alvo.
+Não abra outro processo da D405 ou da serial durante o teste.
 
-- `RGB trios per spawn`: comece com `1`.
-- `Fixed target positions`: ligado.
-- `Random target positions`: desligado.
-- `Random target sizes`: desligado.
-- Escolha um raio fixo e mantenha-o igual em todo o lote.
+## 3. Teste — terminal B
 
-Os três círculos devem permanecer visíveis simultaneamente. O app não possui
-timeout. Um toque fora do alvo registra um miss sem bloquear os próximos
-toques. O lote termina automaticamente depois que todos os alvos distintos
-forem tocados, mesmo que existam tentativas extras ou toques repetidos. Use
-**Continue after miss** uma vez para encerrar antecipadamente; os alvos ainda
-pendentes serão registrados como `no_touch`.
-
-## 5. Validação sem movimento — terminal C
-
-Com o celular já mostrando o trio RGB:
+Primeiro valide a pose atual sem movimento, com os alvos já na tela:
 
 ```bash
 ros2 launch denso_collab screen_approach.launch.py \
-  image_source:=realsense image_topic:=/left_basic_camera \
-  use_random_holder_pose:=false approach_plan_only:=true \
-  touch_enabled:=false sim:=false
+  sim:=false image_source:=realsense image_topic:=/left_basic_camera \
+  target:=rgb use_random_holder_pose:=false \
+  approach_plan_only:=true touch_enabled:=false
 ```
 
-O resultado esperado contém três alvos detectados e termina com
-`Standoff sequence complete`. Este comando não move os robôs.
-
-## 6. Lote real — terminal C
-
-Depois da validação, execute um lote com o mesmo trio visível:
+Depois, para tocar na pose atual:
 
 ```bash
 ros2 launch denso_collab screen_approach.launch.py \
-  image_source:=realsense image_topic:=/left_basic_camera \
-  use_random_holder_pose:=false approach_plan_only:=false \
-  touch_enabled:=true sim:=false
+  sim:=false image_source:=realsense image_topic:=/left_basic_camera \
+  target:=rgb use_random_holder_pose:=false touch_enabled:=true test_runs:=1
 ```
 
-O braço esquerdo toca os alvos em ordem espacial. O braço direito fica fixo.
-Se o Hall não confirmar contato, a sequência para; inspecione o robô antes de
-iniciar outro lote.
+Para CAPTCHA, troque por `target:=captcha` e mostre esse modo no app.
+Se já houver um driver ROS da câmera, use `image_source:=topic` e o tópico dele.
 
-## Teste com o celular horizontal
+## Celular horizontal / poses aleatórias
 
-O modo horizontal gira o suporte direito 90 graus no sentido anti-horário e
-mantém a câmera esquerda na orientação vertical em relação ao mundo. Para
-validar apenas o planejamento da nova pose sem mover os robôs, use:
+```bash
+ros2 launch denso_collab screen_approach.launch.py \
+  sim:=false image_source:=realsense image_topic:=/left_basic_camera \
+  target:=rgb use_random_holder_pose:=true phone_orientation:=horizontal \
+  touch_enabled:=true test_runs:=1
+```
+
+O estágio aleatório gira o holder +90° anti-horário e mantém a câmera na
+orientação vertical em relação ao mundo. Use `phone_orientation:=vertical`
+para o modo normal. Com `use_random_holder_pose:=false`, o holder precisa
+estar previamente na orientação escolhida; esse modo não move o braço direito.
+Cheque a pose horizontal hipotética sem executar com:
 
 ```bash
 ros2 run denso_collab random_collab_pose --ros-args \
   -p sim:=false -p plan_only:=true -p phone_orientation:=horizontal
 ```
 
-Depois execute um único lote supervisionado:
+`test_runs:=N` executa 1–100 lotes; com pose aleatória ligada, há uma nova pose
+por lote. Confira velocidades e limites em [cellphone_collab.yaml](config/cellphone_collab.yaml)
+antes de mover. Falha de sensor, planejamento ou toque interrompe a sequência:
+inspecione antes de reiniciar. Exporte os resultados pelo app.
 
-```bash
-ros2 launch denso_collab screen_approach.launch.py \
-  image_source:=realsense image_topic:=/left_basic_camera \
-  use_random_holder_pose:=true phone_orientation:=horizontal \
-  approach_plan_only:=false touch_enabled:=true sim:=false
-```
-
-Nesse modo, a imagem deve mostrar os tags na ordem `2 3 / 1 4`. A ordem
-vertical padrão é `1 2 / 4 3`.
-Se usar `use_random_holder_pose:=false`, posicione primeiro o suporte na
-horizontal; esse modo não movimenta o braço direito.
-
-## Próximo lote
-
-Mantenha os robôs fixos (`use_random_holder_pose:=false`) e altere apenas uma
-variável por lote, por exemplo o raio no app ou as velocidades em
-`config/cellphone_collab.yaml`. Exporte o CSV do app ao final de cada grupo de
-lotes.
+A detecção CAPTCHA ainda precisa de validação com a câmera real.

@@ -75,4 +75,11 @@ install(TARGETS align_tool random_collab_pose move_to_screen_standoff move_to_co
 install(PROGRAMS scripts/sim_touch_contact.py DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 
+if(BUILD_TESTING)
+  enable_testing()
+  add_executable(test_target_batch test/test_target_batch.cpp)
+  target_include_directories(test_target_batch PRIVATE include)
+  add_test(NAME test_target_batch COMMAND test_target_batch)
+endif()
+
 ament_package()

@@ -32,10 +32,13 @@ def _start_tests(context):
         sim = LaunchConfiguration('sim').perform(context).lower()
         touch_enabled = LaunchConfiguration('touch_enabled').perform(context).lower()
         phone_orientation = LaunchConfiguration('phone_orientation').perform(context).lower()
+        target_type = LaunchConfiguration('target').perform(context)
         if sim not in ('true', 'false') or touch_enabled not in ('true', 'false'):
             raise ValueError('sim and touch_enabled must be true or false')
         if phone_orientation not in ('vertical', 'horizontal'):
             raise ValueError('phone_orientation must be vertical or horizontal')
+        if target_type not in ('rgb', 'captcha'):
+            raise ValueError('target must be rgb or captcha')
     except ValueError as error:
         return _stop(str(error))
 
@@ -56,6 +59,7 @@ def _start_tests(context):
                 'video_path': LaunchConfiguration('video_path'),
                 'phone_orientation': phone_orientation,
                 'sim': sim,
+                'target': target_type,
             }.items()))
             if sim == 'true' and touch_enabled == 'true':
                 actions.append(Node(
@@ -76,6 +80,7 @@ def _start_tests(context):
                     LaunchConfiguration('touch_enabled'), value_type=bool),
                 'sim': ParameterValue(LaunchConfiguration('sim'), value_type=bool),
                 'phone_orientation': phone_orientation,
+                'target': target_type,
             }],
         )
         actions.extend([screen, RegisterEventHandler(OnProcessExit(
@@ -120,6 +125,7 @@ def generate_launch_description():
         DeclareLaunchArgument('video_path', default_value=''),
         DeclareLaunchArgument('approach_plan_only', default_value='false'),
         DeclareLaunchArgument('sim', default_value='false'),
+        DeclareLaunchArgument('target', default_value='rgb', choices=['rgb', 'captcha']),
         DeclareLaunchArgument('touch_enabled', default_value='false'),
         DeclareLaunchArgument(
             'phone_orientation', default_value='vertical',

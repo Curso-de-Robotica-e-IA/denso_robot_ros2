@@ -1,6 +1,7 @@
 move_to_screen_standoff:
   ros__parameters:
     holder_frame: right_cellphone_holder_tags_frame
+    target: rgb  # rgb trios or 1-9 CAPTCHA checkboxes
     # vertical or horizontal; horizontal is +90 deg CCW for the holder.
     phone_orientation: vertical
     target_link: left_camera_depth_optical_frame

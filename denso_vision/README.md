@@ -77,6 +77,30 @@ ros2 topic pub --once /target_pixel geometry_msgs/msg/PointStamped \
 
 ## Topics
 
+### CAPTCHA checkbox mode
+
+Pass `target:=captcha` to `cellphone_holder_vision.launch.py` (default: `rgb`).
+The four AprilTags and homography are unchanged. The detector rectifies the
+holder ROI, matches the bundled unchecked English Google widget at several
+physical sizes, suppresses duplicate matches, and requires the usual stable
+frames before publishing 1–9 checkbox centers. The template includes the
+checkbox and its label to reject unrelated square UI controls. It does not
+detect image-challenge contents. A hidden checkbox cannot be counted; the
+number is discovered from visible matches, not assumed to be one.
+
+`captcha_min_side_mm`, `captcha_max_side_mm`, and `captcha_match_threshold`
+live in `config/cellphone_holder.yaml`. Replace the screenshot template if
+Google changes its regular English layout. `assets/captcha_checkbox.png`
+is a crop of the original widget displayed in `robot-touch-test-app`, using
+Google's public v2 test key. It needs no network to match camera images.
+
+The existing `detected_targets` topic is reused: kind **3** means CAPTCHA;
+RGB kinds **0/1/2** retain their meanings. For CAPTCHA, the size field is a
+projected half-side in pixels (used for stability/debugging), not a circle
+radius. The holder XY coordinate is the actual checkbox center, not the
+center of the complete widget. The motion node rejects mixed or wrong-mode
+batches. Legacy `dots/red/green/blue` topics publish RGB targets only.
+
 | Topic | Type | Meaning |
 | --- | --- | --- |
 | `tag_corners` | `geometry_msgs/msg/PolygonStamped` | 16 image pixels, grouped by IDs 1-4; each group is TL, TR, BR, BL |

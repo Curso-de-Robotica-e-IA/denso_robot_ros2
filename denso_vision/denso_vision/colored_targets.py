@@ -25,6 +25,9 @@ DEFAULT_HSV = {
     'blue': ((100, 100, 50), (130, 255, 255)),
 }
 
+# The first field of each detected_targets row keeps RGB IDs unchanged.
+TARGET_KINDS = ('red', 'green', 'blue', 'captcha')
+
 
 def detect_targets(
     image: np.ndarray,
@@ -69,8 +72,18 @@ def detect_targets(
     return sorted(found, key=lambda target: (target.pixel_y, target.pixel_x))
 
 
-def validate_targets(targets: List[Target]) -> None:
-    """Reject missing, overlapping, or imbalanced RGB target sets."""
+def validate_targets(targets: List[Target], target_type: str = 'rgb') -> None:
+    """Reject invalid checkbox batches or incomplete/overlapping RGB trios."""
+    if target_type == 'captcha':
+        if not targets or len(targets) > 9 or any(t.color != 'captcha' for t in targets):
+            raise ValueError('Expected 1 to 9 unchecked CAPTCHA checkboxes')
+        for index, first in enumerate(targets):
+            if any(np.hypot(first.pixel_x - second.pixel_x, first.pixel_y - second.pixel_y) <
+                   first.radius_px + second.radius_px for second in targets[index + 1:]):
+                raise ValueError('Detected checkboxes overlap')
+        return
+    if target_type != 'rgb':
+        raise ValueError('target must be rgb or captcha')
     if not targets or len(targets) % 3:
         raise ValueError(f'RGB targets must form complete trios; detected {len(targets)} circles')
     trios = len(targets) // 3
