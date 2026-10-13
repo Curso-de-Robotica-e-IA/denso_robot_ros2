@@ -16,6 +16,6 @@ Distâncias, velocidades, retração, dwell e limites:
 [cellphone_holder.yaml](../denso_vision/config/cellphone_holder.yaml).
 Reinicie o teste após alterar YAML; alterações em C++ exigem rebuild.
 
-A calibração do TCP esquerdo mantém `X=-2 mm`, `Y=-1 mm` locais. Os argumentos
+A calibração do TCP esquerdo mantém `X=+2 mm`, `Y=+1 mm` locais. Os argumentos
 `left_hall_touch_calib_offset_x_mm` e `left_hall_touch_calib_offset_y_mm` do
 bringup permitem ajustar esses valores; mudar a geometria exige reiniciar o bringup.

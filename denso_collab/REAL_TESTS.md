@@ -16,12 +16,34 @@ IPs padrão: esquerdo `192.168.160.228`, direito `192.168.160.227`.
 ros2 launch denso_robot_bringup dual_denso_robot_bringup.launch.py \
   model:=vs050 sim:=false rviz:=true use_servo:=true \
   left_basic_camera:=false left_hall_touch_camera:=true \
-  right_cellphone_holder:=true right_virtual_phone:=false
+  right_cellphone_holder:=true right_virtual_phone:=false \
+  left_hall_touch_calib_offset_x_mm:=2.0 \
+  left_hall_touch_calib_offset_y_mm:=1.0 \
+  left_servo_check_collisions:=false
 ```
 
 Mantenha esse terminal aberto. Confirme ambos os controladores de trajetória
 e o joint-state broadcaster `active` com `ros2 control list_controllers`.
-Não desative a verificação de colisões do Servo para contornar uma falha no real.
+
+`left_servo_check_collisions:=false` desativa a checagem de colisões somente
+durante a aproximação final comandada pelo MoveIt Servo. Isso evita a redução
+progressiva de velocidade mostrada como `Close to a collision, decelerating`
+quando a ponta se aproxima intencionalmente da tela. Os movimentos planejados
+pelo MoveIt continuam usando a cena de colisão. Valide primeiro com
+`approach_plan_only:=true`, mantenha livre o caminho da aproximação e confirme
+que o `/touch_detected` alterna corretamente antes do teste com toque.
+
+Confirme o valor carregado depois do bringup:
+
+```bash
+ros2 param get /left_servo_node moveit_servo.check_collisions
+```
+
+O resultado esperado para os testes de toque é `Boolean value is: False`.
+
+Os offsets padrão do TCP do Hall são `X=+2 mm` e `Y=+1 mm`, medidos nos
+eixos locais do `left_calib_link`. Os dois argumentos estão explícitos no
+comando para registrar exatamente a calibração usada em cada teste.
 
 ## 2. Sensor e app
 
@@ -54,8 +76,16 @@ Depois, para tocar na pose atual:
 ```bash
 ros2 launch denso_collab screen_approach.launch.py \
   sim:=false image_source:=realsense image_topic:=/left_basic_camera \
-  target:=rgb use_random_holder_pose:=false touch_enabled:=true test_runs:=1
+  target:=rgb use_random_holder_pose:=false touch_enabled:=true test_runs:=1 \
+  record_debug_video:=true
 ```
+
+O `screen_approach` grava `/debug_image` por padrão em MP4/H.264 a 15 FPS e
+fecha o arquivo ao terminar o launch. O vídeo e o JSON de metadados ficam em
+`denso_robot_ros2/debug_videos` no host. Um launch com vários `test_runs` gera
+um vídeo contínuo para todo o lote. Para desativar, use
+`record_debug_video:=false`; para reduzir o tamanho, acrescente
+`debug_video_fps:=10.0 debug_video_scale:=0.5`.
 
 Para CAPTCHA, troque por `target:=captcha` e mostre esse modo no app.
 Se já houver um driver ROS da câmera, use `image_source:=topic` e o tópico dele.
