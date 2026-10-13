@@ -211,11 +211,11 @@ def generate_launch_description():
                               description='Attach the Hall touch/D405 tool to right J6'))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'left_hall_touch_calib_offset_x_mm', default_value='-2.0',
+            'left_hall_touch_calib_offset_x_mm', default_value='2.0',
             description='left_calib_link local X offset in millimetres'))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'left_hall_touch_calib_offset_y_mm', default_value='-1.0',
+            'left_hall_touch_calib_offset_y_mm', default_value='1.0',
             description='left_calib_link local Y offset in millimetres'))
     declared_arguments.append(
         DeclareLaunchArgument(

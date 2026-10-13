@@ -5,8 +5,8 @@
   <xacro:macro name="hall_touch_camera" params="
     namespace
     end_effector
-    calib_offset_x_mm:=-2
-    calib_offset_y_mm:=-1">
+    calib_offset_x_mm:=2
+    calib_offset_y_mm:=1">
     <xacro:property name="d405_width" value="1920"/>
     <xacro:property name="d405_height" value="1080"/>
     <!-- rectified.0 in config/d405_calibration.json (pixels). -->

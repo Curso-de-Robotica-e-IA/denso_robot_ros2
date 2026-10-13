@@ -21,8 +21,8 @@
     sim:=false
     basic_camera:=false
     hall_touch_camera:=false
-    hall_touch_calib_offset_x_mm:=-2
-    hall_touch_calib_offset_y_mm:=-1
+    hall_touch_calib_offset_x_mm:=2
+    hall_touch_calib_offset_y_mm:=1
     calib_tool:=false
     calib_xyz:='0 0 0.05'
     calib_rpy:='0 0 0'

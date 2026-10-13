@@ -15,8 +15,8 @@
    <xacro:arg name="right_basic_camera" default="false" />
    <xacro:arg name="left_hall_touch_camera" default="false" />
    <xacro:arg name="right_hall_touch_camera" default="false" />
-   <xacro:arg name="left_hall_touch_calib_offset_x_mm" default="-2" />
-   <xacro:arg name="left_hall_touch_calib_offset_y_mm" default="-1" />
+   <xacro:arg name="left_hall_touch_calib_offset_x_mm" default="2" />
+   <xacro:arg name="left_hall_touch_calib_offset_y_mm" default="1" />
    <xacro:arg name="right_hall_touch_calib_offset_x_mm" default="0" />
    <xacro:arg name="right_hall_touch_calib_offset_y_mm" default="0" />
    <xacro:arg name="left_ip_address" default="192.168.160.228" />

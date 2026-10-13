@@ -177,11 +177,11 @@ def generate_launch_description():
         ))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'hall_touch_calib_offset_x_mm', default_value='-2.0',
+            'hall_touch_calib_offset_x_mm', default_value='2.0',
             description='calib_link local X offset in millimetres'))
     declared_arguments.append(
         DeclareLaunchArgument(
-            'hall_touch_calib_offset_y_mm', default_value='-1.0',
+            'hall_touch_calib_offset_y_mm', default_value='1.0',
             description='calib_link local Y offset in millimetres'))
     declared_arguments.append(
         DeclareLaunchArgument(
